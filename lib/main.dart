@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'fitnessDetail.dart';
 import 'models/training_menu.dart';
 import 'services/ai_service.dart';
+import 'login/account.dart';
+import 'login/mypage.dart';
+import 'login/auth.dart';
 
 void main() {
   runApp(const FitnessApp());
@@ -22,7 +25,36 @@ class FitnessApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF5F7FA),
         fontFamily: null,
       ),
-      home: const HomePage(),
+      home: const _AuthGate(),
+      routes: {
+        '/home': (_) => const HomePage(),
+        '/auth': (_) => const AuthLandingPage(),
+        '/mypage': (_) => const MyPage(),
+      },
+    );
+  }
+}
+
+class _AuthGate extends StatefulWidget {
+  const _AuthGate();
+  @override
+  State<_AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<_AuthGate> {
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: AuthRepository().isLoggedIn(),
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final loggedIn = snap.data ?? false;
+        return loggedIn ? const HomePage() : const AuthLandingPage();
+      },
     );
   }
 }
@@ -224,11 +256,19 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
-        onDestinationSelected: (i) => setState(() => _currentIndex = i),
+        onDestinationSelected: (i) {
+          if (i == 2) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MyPage()),
+            );
+            return;
+          }
+          setState(() => _currentIndex = i);
+        },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'ホーム'),
           NavigationDestination(icon: Icon(Icons.calendar_today_outlined), selectedIcon: Icon(Icons.calendar_today), label: 'カレンダー'),
-          NavigationDestination(icon: Icon(Icons.bar_chart_outlined), selectedIcon: Icon(Icons.bar_chart), label: '記録'),
           NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'マイページ'),
         ],
       ),

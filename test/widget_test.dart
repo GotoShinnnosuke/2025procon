@@ -9,11 +9,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fitness/main.dart';
 
 void main() {
-  testWidgets('App renders Home with recommended trainings', (tester) async {
+  testWidgets('App shows auth landing when logged out', (tester) async {
     await tester.pumpWidget(const FitnessApp());
+    await tester.pumpAndSettle();
 
-    // Basic smoke checks for initial UI
-    expect(find.text('おすすめトレーニング'), findsOneWidget);
-    expect(find.text('部位別メニュー'), findsOneWidget);
+    // Auth landing should be visible by default
+    expect(find.text('アカウント'), findsOneWidget);
+    expect(find.text('ユーザー登録を開始'), findsOneWidget);
   });
 }
