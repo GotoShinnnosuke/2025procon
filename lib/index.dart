@@ -1,6 +1,5 @@
+import 'package:fitness/profire_view_page.dart';
 import 'package:flutter/material.dart';
-import 'mypage.dart';
-
 class IndexPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -20,7 +19,7 @@ class IndexPage extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => MyPage()),
+                  MaterialPageRoute(builder: (context) => const ProfileView()),
                 );
               },
             ),

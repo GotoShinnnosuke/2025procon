@@ -1,5 +1,6 @@
 import 'package:fitness/main.dart';
 import 'package:flutter/material.dart';
+import 'main.dart'; // 追加
 class MyPage extends StatefulWidget {
   const MyPage({super.key});
 
@@ -9,11 +10,10 @@ class MyPage extends StatefulWidget {
 
 class _MyPageState extends State<MyPage> {
   final _formKey = GlobalKey<FormState>();
-
   final _nameController = TextEditingController(text: "user");
   final _ageController = TextEditingController(text: "20");
   final _heightController = TextEditingController(text: "170");
-  final _weightController = TextEditingController(text: "60");
+  final _weightController = TextEditingController(text: "55");
   final _passwordController = TextEditingController(text: "123456");
 
   bool _obscurePassword = true;
@@ -188,10 +188,11 @@ class _MyPageState extends State<MyPage> {
                   ),
                   onPressed: () {
                   
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => MyApp()),
-    );
+Navigator.pushReplacement(
+  context,
+  MaterialPageRoute(builder: (context) => const SelectScreen()),
+);
+
 
                   },
                   child: const Text(

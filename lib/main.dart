@@ -1,81 +1,72 @@
-  import 'package:fitness/index.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'index.dart'; // 既存の遷移先
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'forget.dart';
 
-void main() {
-  runApp(const MyApp());
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
+
+  @override
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform, // 必須
+  );
+  runApp(const MyApp());
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false, // 右上の「DEBUG」ラベルを非表示
-      home: const HomePage(), // ← ここでホームページを指定
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: SelectScreen(), // 最初に選択画面を表示
     );
   }
 }
 
-// =========================
-// ホームページ
-// =========================
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+// Register と Login を選ぶ画面
+class SelectScreen extends StatelessWidget {
+  const SelectScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        title: const Text('ホーム'),
+        title: const Text('ようこそ'),
         centerTitle: true,
       ),
       body: Center(
         child: Column(
-          mainAxisSize: MainAxisSize.min, // 中央に配置
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 1つ目のボタン
             ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-              ),
               onPressed: () {
+                // RegisterScreen に遷移
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const RegisterPage()),
+                  MaterialPageRoute(builder: (_) => const RegisterScreen()),
                 );
               },
-              child: const Text(
-                'ユーザー登録を開始',
-                style: TextStyle(fontSize: 18),
-              ),
+              child: const Text('新規登録'),
             ),
-            const SizedBox(height: 20), // ボタンの間の余白
-
-            // 2つ目のボタン
+            const SizedBox(height: 20),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color.fromARGB(255, 255, 241, 241), // 色変更
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-              ),
               onPressed: () {
+                // LoginPage に遷移
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const LoginPage()),
                 );
               },
-              child: const Text(
-                'ログインページへ',
-                style: TextStyle(fontSize: 20),
-              ),
+              child: const Text('ログイン'),
             ),
           ],
         ),
@@ -84,55 +75,16 @@ class HomePage extends StatelessWidget {
   }
 }
 
-// =========================
-// ユーザー登録ページ
-// =========================
-class RegisterPage extends StatefulWidget {
-  const RegisterPage({super.key});
-
-  @override
-  State<RegisterPage> createState() => _RegisterPageState();
-}
-
-class _RegisterPageState extends State<RegisterPage> {
+class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-
   final _nameController = TextEditingController();
   final _ageController = TextEditingController();
   final _heightController = TextEditingController();
   final _weightController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
-
-  void _submitForm() {
-    if (_formKey.currentState!.validate()) {
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('登録内容確認'),
-          content: Text('''
-名前: ${_nameController.text}
-年齢: ${_ageController.text}
-身長: ${_heightController.text} cm
-体重: ${_weightController.text} kg
-パスワード: ${_passwordController.text}
-'''),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => IndexPage()),
-  );
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-    }
-  }
 
   @override
   void dispose() {
@@ -140,8 +92,59 @@ class _RegisterPageState extends State<RegisterPage> {
     _ageController.dispose();
     _heightController.dispose();
     _weightController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    try {
+      final userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+              email: _emailController.text.trim(),
+              password: _passwordController.text);
+
+      await userCredential.user?.sendEmailVerification();
+
+      // build後にダイアログを表示
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('登録完了'),
+            content: const Text('確認メールを送信しました'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => IndexPage()),
+                  );
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      });
+    } on FirebaseAuthException catch (e) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('登録エラー'),
+            content: Text(e.message ?? '不明なエラー'),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'))
+            ],
+          ),
+        );
+      });
+    }
   }
 
   @override
@@ -167,6 +170,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
+                      // ここに既存の TextFormField たちをすべて入れる
                       TextFormField(
                         controller: _nameController,
                         decoration: const InputDecoration(
@@ -174,8 +178,9 @@ class _RegisterPageState extends State<RegisterPage> {
                           prefixIcon: Icon(Icons.person),
                           border: OutlineInputBorder(),
                         ),
-                        validator: (value) =>
-                            value == null || value.isEmpty ? '名前を入力してください' : null,
+                        validator: (value) => value == null || value.isEmpty
+                            ? '名前を入力してください'
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -187,7 +192,8 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
-                          if (value == null || value.isEmpty) return '年齢を入力してください';
+                          if (value == null || value.isEmpty)
+                            return '年齢を入力してください';
                           if (int.tryParse(value) == null) return '数字で入力してください';
                           return null;
                         },
@@ -202,8 +208,10 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
-                          if (value == null || value.isEmpty) return '身長を入力してください';
-                          if (double.tryParse(value) == null) return '数値で入力してください';
+                          if (value == null || value.isEmpty)
+                            return '身長を入力してください';
+                          if (double.tryParse(value) == null)
+                            return '数値で入力してください';
                           return null;
                         },
                       ),
@@ -217,8 +225,27 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
-                          if (value == null || value.isEmpty) return '体重を入力してください';
-                          if (double.tryParse(value) == null) return '数値で入力してください';
+                          if (value == null || value.isEmpty)
+                            return '体重を入力してください';
+                          if (double.tryParse(value) == null)
+                            return '数値で入力してください';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _emailController,
+                        decoration: const InputDecoration(
+                          labelText: 'メールアドレス',
+                          prefixIcon: Icon(Icons.mail),
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.isEmpty)
+                            return 'メールアドレスを入力してください';
+                          if (!value.contains('@'))
+                            return '正しいメールアドレスを入力してください';
                           return null;
                         },
                       ),
@@ -244,15 +271,12 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                         ),
                         validator: (value) {
-                          if (value == null || value.isEmpty) {
+                          if (value == null || value.isEmpty)
                             return 'パスワードを入力してください';
-                          }
-                          if (value.length < 6) {
-                            return '6文字以上で入力してください';
-                          }
+                          if (value.length < 6) return '6文字以上で入力してください';
                           return null;
                         },
-                      ),
+                      )
                     ],
                   ),
                 ),
@@ -281,6 +305,7 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 }
+
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -297,19 +322,18 @@ class _LoginPageState extends State<LoginPage> {
   void _login() {
     if (_formKey.currentState!.validate()) {
       // ログイン処理（今回は仮の処理）
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => IndexPage()),
-    );
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => IndexPage()),
+      );
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('ID: ${_idController.text} でログインしました')),
       );
 
       // 成功したら前の画面に戻るなど
-     
-            Navigator.pushNamed(context, '/mypage');
 
+      Navigator.pushNamed(context, '/mypage');
     }
   }
 
@@ -350,8 +374,9 @@ class _LoginPageState extends State<LoginPage> {
                           prefixIcon: Icon(Icons.person),
                           border: OutlineInputBorder(),
                         ),
-                        validator: (value) =>
-                            value == null || value.isEmpty ? 'IDを入力してください' : null,
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'IDを入力してください'
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -394,13 +419,33 @@ class _LoginPageState extends State<LoginPage> {
                             borderRadius: BorderRadius.circular(30),
                           ),
                         ),
+                        onPressed: () {
+                          // forgetPageへ遷移
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const ForgetPage()),
+                          );
+                        },
+                        child: const Text(
+                          'パスワードを忘れた場合',
+                          style: TextStyle(fontSize: 18, color: Colors.white),
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepPurple,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 40, vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
                         onPressed: _login,
                         child: const Text(
                           'ログイン',
                           style: TextStyle(fontSize: 18, color: Colors.white),
-
-
-
                         ),
                       ),
                     ],
@@ -414,5 +459,3 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
-
-
