@@ -1,13 +1,51 @@
 import 'package:flutter/material.dart';
 import 'models/training_menu.dart';
+import 'training_timer.dart';
+import 'services/favorites.dart';
 
-class FitnessDetailPage extends StatelessWidget {
-  const FitnessDetailPage({super.key, this.plan});
+class FitnessDetailPage extends StatefulWidget {
+  const FitnessDetailPage({super.key, this.plan, this.exercise});
 
   final TrainingMenu? plan;
+  final ExerciseItem? exercise;
+
+  @override
+  State<FitnessDetailPage> createState() => _FitnessDetailPageState();
+}
+
+class _FitnessDetailPageState extends State<FitnessDetailPage> {
+  bool _isFav = false;
+  ExerciseItem? get _targetExercise => widget.exercise ?? (widget.plan?.exercises.isNotEmpty == true ? widget.plan!.exercises.first : null);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFav();
+  }
+
+  Future<void> _loadFav() async {
+    final ex = _targetExercise;
+    if (ex == null) return;
+    final fav = await FavoritesRepository().isFavorite(ex);
+    if (!mounted) return;
+    setState(() => _isFav = fav);
+  }
+
+  Future<void> _toggleFav() async {
+    final ex = _targetExercise;
+    if (ex == null) return;
+    final now = await FavoritesRepository().toggle(ex);
+    if (!mounted) return;
+    setState(() => _isFav = now);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(now ? 'お気に入りに追加しました' : 'お気に入りを解除しました')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final plan = widget.plan;
+    final exercise = widget.exercise;
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
@@ -16,10 +54,11 @@ class FitnessDetailPage extends StatelessWidget {
           slivers: [
             SliverToBoxAdapter(
               child: _Header(
-                title: plan?.name ?? 'プッシュアップ',
-                subtitle: plan?.summary ?? '胸筋・三頭筋・肩を鍛える基本トレーニング',
+                title: exercise?.name ?? plan?.name ?? 'プッシュアップ',
+                subtitle: exercise?.notes ?? plan?.summary ?? '胸筋・三頭筋・肩を鍛える基本トレーニング',
                 onBack: () => Navigator.of(context).maybePop(),
-                onFavorite: () {},
+                onFavorite: _toggleFav,
+                isFavorite: _isFav,
               ),
             ),
             SliverToBoxAdapter(
@@ -31,24 +70,38 @@ class FitnessDetailPage extends StatelessWidget {
                     const SizedBox(height: 16),
                     const _SectionTitle('トレーニング概要'),
                     const SizedBox(height: 12),
-                    if (plan == null)
-                      _InfoCard(cs: cs)
+                    if (exercise != null)
+                      _ExerciseInfoCard(item: exercise!)
+                    else if (plan != null)
+                      _PlanInfoCard(plan: plan!)
                     else
-                      _PlanInfoCard(plan: plan!),
+                      _InfoCard(cs: cs),
                     const SizedBox(height: 20),
-                    if (plan == null) ...[
+                    if (exercise != null) ...[
                       const _SectionTitle('やり方'),
                       const SizedBox(height: 12),
-                      const _HowToCard(),
-                    ] else ...[
+                      _HowToFromExercise(item: exercise!),
+                      const SizedBox(height: 20),
+                      const _SectionTitle('重要なコツ'),
+                      const SizedBox(height: 12),
+                      _TipsFromExercise(item: exercise!),
+                    ] else if (plan != null) ...[
                       const _SectionTitle('種目一覧'),
                       const SizedBox(height: 12),
                       _ExerciseList(plan: plan!),
+                      const SizedBox(height: 20),
+                      const _SectionTitle('重要なコツ'),
+                      const SizedBox(height: 12),
+                      const _TipsCard(),
+                    ] else ...[
+                      const _SectionTitle('やり方'),
+                      const SizedBox(height: 12),
+                      const _HowToCard(),
+                      const SizedBox(height: 20),
+                      const _SectionTitle('重要なコツ'),
+                      const SizedBox(height: 12),
+                      const _TipsCard(),
                     ],
-                    const SizedBox(height: 20),
-                    const _SectionTitle('重要なコツ'),
-                    const SizedBox(height: 12),
-                    const _TipsCard(),
                     const SizedBox(height: 20),
                     const _SectionTitle('レベル別バリエーション'),
                     const SizedBox(height: 12),
@@ -68,7 +121,17 @@ class FitnessDetailPage extends StatelessWidget {
           width: double.infinity,
           height: 48,
           child: FilledButton.icon(
-            onPressed: () {},
+            onPressed: () {
+              final ex = _targetExercise;
+              if (ex != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => TrainingTimerPage(item: ex)),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('開始できる種目がありません')));
+              }
+            },
             icon: const Icon(Icons.play_arrow),
             label: const Text('トレーニングを開始'),
           ),
@@ -84,11 +147,13 @@ class _Header extends StatelessWidget {
     required this.subtitle,
     required this.onBack,
     required this.onFavorite,
+    required this.isFavorite,
   });
   final String title;
   final String subtitle;
   final VoidCallback onBack;
   final VoidCallback onFavorite;
+  final bool isFavorite;
 
   @override
   Widget build(BuildContext context) {
@@ -132,7 +197,7 @@ class _Header extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   _circleIconButton(Icons.arrow_back, onBack),
-                  _circleIconButton(Icons.favorite_border, onFavorite),
+                  _circleIconButton(isFavorite ? Icons.favorite : Icons.favorite_border, onFavorite),
                 ],
               ),
             ),
@@ -219,6 +284,34 @@ class _InfoCard extends StatelessWidget {
           _InfoRow(icon: Icons.timer, label: '時間: 10-15分'),
           Divider(height: 1),
           _InfoRow(icon: Icons.bolt, label: '効果: 胸筋、三頭筋、体幹'),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExerciseInfoCard extends StatelessWidget {
+  const _ExerciseInfoCard({required this.item});
+  final ExerciseItem item;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Column(
+        children: [
+          _InfoRow(icon: Icons.repeat, label: 'セット: ${item.sets ?? '-'}'),
+          const Divider(height: 1),
+          _InfoRow(icon: Icons.timer, label: '回数/秒数: ${item.repsOrSeconds ?? '-'}'),
+          const Divider(height: 1),
+          _InfoRow(icon: Icons.bedtime_off, label: '休憩: ${item.rest ?? '-'}'),
+          if ((item.notes ?? '').isNotEmpty) ...[
+            const Divider(height: 1),
+            _InfoRow(icon: Icons.sticky_note_2_outlined, label: 'メモ: ${item.notes}')
+          ],
         ],
       ),
     );
@@ -361,6 +454,35 @@ class _HowToCard extends StatelessWidget {
   }
 }
 
+class _HowToFromExercise extends StatelessWidget {
+  const _HowToFromExercise({required this.item});
+  final ExerciseItem item;
+  @override
+  Widget build(BuildContext context) {
+    final steps = item.steps.isNotEmpty
+        ? item.steps
+        : [
+            '正しいフォームで開始姿勢を作る',
+            '反動を使わず、ゆっくりとコントロールして動く',
+            '呼吸を止めずに繰り返す',
+          ];
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          for (int i = 0; i < steps.length; i++) ...[
+            _StepItem(number: i + 1, title: 'ステップ ${i + 1}', body: steps[i]),
+            if (i != steps.length - 1) const Divider(height: 1),
+          ]
+        ],
+      ),
+    );
+  }
+}
+
 class _StepItem extends StatelessWidget {
   const _StepItem({required this.number, required this.title, required this.body});
   final int number;
@@ -420,6 +542,33 @@ class _TipsCard extends StatelessWidget {
           _TipRow(text: '呼吸を意識する・下げる時に息を吸い、上げる時に息を吐く'),
           _TipRow(text: '手の位置・肩の真下より少し外側に置く'),
           _TipRow(text: 'ゆっくりとした動作・2秒で下げ、1秒で上げるペースを意識'),
+        ],
+      ),
+    );
+  }
+}
+
+class _TipsFromExercise extends StatelessWidget {
+  const _TipsFromExercise({required this.item});
+  final ExerciseItem item;
+  @override
+  Widget build(BuildContext context) {
+    final tips = item.tips.isNotEmpty
+        ? item.tips
+        : [
+            '反動を使わず可動域をコントロールする',
+            '痛みが出る手前で可動域を調整する',
+            '呼吸は止めず、動作に合わせて行う',
+          ];
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEDE9FE),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          for (final t in tips) _TipRow(text: t),
         ],
       ),
     );

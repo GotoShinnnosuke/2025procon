@@ -66,6 +66,17 @@ class _RegisterPageState extends State<RegisterPage> {
 
   bool _obscurePassword = true;
 
+  @override
+  void initState() {
+    super.initState();
+    // デモ用の初期値をセット（毎回入力不要）
+    _nameController.text = 'demo';
+    _ageController.text = '25';
+    _heightController.text = '170';
+    _weightController.text = '65';
+    _passwordController.text = '123456';
+  }
+
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
       showDialog(
@@ -246,6 +257,14 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
+  @override
+  void initState() {
+    super.initState();
+    // デモ用の初期値をセット（毎回入力不要）
+    _idController.text = 'demo';
+    _passwordController.text = '123456';
+  }
+
   void _login() async {
     if (_formKey.currentState!.validate()) {
       final repo = AuthRepository();
@@ -262,6 +281,24 @@ class _LoginPageState extends State<LoginPage> {
         );
       }
     }
+  }
+
+  Future<void> _demoLogin() async {
+    // デモプロフィールを保存してそのままログイン状態にする
+    final repo = AuthRepository();
+    await repo.saveProfile(
+      name: 'demo',
+      age: 25,
+      height: 170.0,
+      weight: 65.0,
+      userId: 'demo',
+      password: '123456',
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('デモユーザーでログインしました')),
+    );
+    Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
   }
 
   @override
@@ -326,6 +363,16 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         onPressed: _login,
                         child: const Text('ログイン', style: TextStyle(fontSize: 18, color: Colors.white)),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: _demoLogin,
+                        icon: const Icon(Icons.flash_on_outlined),
+                        label: const Text('デモでログイン（ワンタップ）'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                        ),
                       ),
                     ],
                   ),

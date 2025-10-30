@@ -5,6 +5,7 @@ import '../models/training_menu.dart';
 
 abstract class AIServiceBase {
   Future<List<TrainingMenu>> generatePlans(String userInput);
+  Future<List<ExerciseItem>> generateExercises(String userInput);
 }
 
 class AIServiceException implements Exception {
@@ -95,6 +96,81 @@ class OpenAIAIService implements AIServiceBase {
     return plans.take(3).map((e) => TrainingMenu.fromJson(Map<String, dynamic>.from(e))).toList();
   }
 
+  @override
+  Future<List<ExerciseItem>> generateExercises(String userInput) async {
+    if (apiKey.isEmpty) {
+      throw AIServiceException('APIキーが未設定です。--dart-define=OPENAI_API_KEY=... を指定してください。');
+    }
+
+    final uri = Uri.parse((baseUrl ?? 'https://api.openai.com') + '/v1/chat/completions');
+    final body = {
+      'model': 'gpt-4o-mini',
+      'temperature': 0.7,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'あなたは認定パーソナルトレーナー。安全第一。必ずJSONのみを返す。構造は {"exercises":[{name,sets,repsOrSeconds,rest,notes,tips:[string],steps:[string]}] }。日本語で簡潔に。関節や既往歴に配慮し、過負荷にならないよう調整案もnotesに記載。必ず10件以内で返すこと。'
+        },
+        {
+          'role': 'user',
+          'content': userInput,
+        },
+      ],
+    };
+
+    final res = await _safePost(uri, body);
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    final choices = (data['choices'] as List?);
+    if (choices == null || choices.isEmpty) {
+      throw AIServiceException('モデルからの応答が取得できませんでした。しばらくして再試行してください。');
+    }
+    final content = choices.first['message']?['content'] as String?;
+    if (content == null || content.isEmpty) {
+      throw AIServiceException('応答が空でした。条件を短く/具体的にして再試行してください。');
+    }
+    Map<String, dynamic> jsonObj;
+    try {
+      jsonObj = jsonDecode(content) as Map<String, dynamic>;
+    } catch (e) {
+      throw AIServiceException('応答の解析に失敗しました。もう一度お試しください。', detail: e.toString());
+    }
+    final List list = (jsonObj['exercises'] as List?) ?? const [];
+    return list.map((e) => ExerciseItem.fromJson(Map<String, dynamic>.from(e))).toList();
+  }
+
+  Future<http.Response> _safePost(Uri uri, Map<String, dynamic> body) async {
+    http.Response res;
+    try {
+      res = await http
+          .post(
+            uri,
+            headers: {
+              'Authorization': 'Bearer $apiKey',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 30));
+    } on TimeoutException {
+      throw AIServiceException('タイムアウトしました。通信環境を確認して再試行してください。');
+    } catch (e) {
+      throw AIServiceException('ネットワークエラーが発生しました。接続を確認してください。', detail: e.toString());
+    }
+    if (res.statusCode != 200) {
+      String? apiDetail;
+      try {
+        final err = jsonDecode(res.body) as Map<String, dynamic>;
+        final errObj = err['error'] as Map<String, dynamic>?;
+        apiDetail = errObj?['message']?.toString();
+      } catch (_) {}
+      final msg = _mapStatusToMessage(res.statusCode, apiDetail);
+      throw AIServiceException(msg, statusCode: res.statusCode, detail: apiDetail);
+    }
+    return res;
+  }
+
   String _mapStatusToMessage(int status, String? apiDetail) {
     switch (status) {
       case 400:
@@ -170,5 +246,40 @@ class MockAIService implements AIServiceBase {
         .map((e) => TrainingMenu.fromJson(Map<String, dynamic>.from(e)))
         .toList();
     return plans;
+  }
+
+  @override
+  Future<List<ExerciseItem>> generateExercises(String userInput) async {
+    await Future.delayed(const Duration(milliseconds: 400));
+    final list = [
+      {
+        'name': 'スクワット',
+        'sets': 3,
+        'repsOrSeconds': '12回',
+        'rest': '45秒',
+        'notes': '膝はつま先より前に出しすぎない',
+        'tips': ['胸を張る', 'かかと重心でしゃがむ', '膝は内側に入れない'],
+        'steps': ['肩幅に立つ', 'お尻を引きながらしゃがむ', 'かかとで床を押して立ち上がる']
+      },
+      {
+        'name': 'プランク',
+        'sets': 3,
+        'repsOrSeconds': '30秒',
+        'rest': '45秒',
+        'notes': '腰を反らさない',
+        'tips': ['体を一直線に保つ', 'お腹に軽く力を入れる'],
+        'steps': ['肘とつま先で支える', '肩の真下に肘を置く', '呼吸を続ける']
+      },
+      {
+        'name': '膝つきプッシュアップ',
+        'sets': 3,
+        'repsOrSeconds': '8〜10回',
+        'rest': '60秒',
+        'notes': '体を一直線に',
+        'tips': ['肘をやや外に', '下で反動を使わない'],
+        'steps': ['膝をついて腕立ての姿勢', '胸が床に近づくまで下降', '押し上げて戻る']
+      },
+    ];
+    return list.map((e) => ExerciseItem.fromJson(Map<String, dynamic>.from(e))).toList();
   }
 }

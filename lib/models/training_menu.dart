@@ -4,6 +4,8 @@ class ExerciseItem {
   final String? repsOrSeconds;
   final String? rest;
   final String? notes;
+  final List<String> tips; // コツ
+  final List<String> steps; // 手順
 
   ExerciseItem({
     required this.name,
@@ -11,6 +13,8 @@ class ExerciseItem {
     this.repsOrSeconds,
     this.rest,
     this.notes,
+    this.tips = const [],
+    this.steps = const [],
   });
 
   factory ExerciseItem.fromJson(Map<String, dynamic> j) => ExerciseItem(
@@ -19,6 +23,8 @@ class ExerciseItem {
         repsOrSeconds: j['repsOrSeconds']?.toString(),
         rest: j['rest']?.toString(),
         notes: j['notes']?.toString(),
+        tips: (j['tips'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+        steps: (j['steps'] as List?)?.map((e) => e.toString()).toList() ?? const [],
       );
 }
 
