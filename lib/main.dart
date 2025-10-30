@@ -149,9 +149,10 @@ class _HomePageState extends State<HomePage> {
       return;
     }
     final loadLabel = ['小', '中', '大'][_loadLevelIndex];
-    final loadHint = _loadLevelIndex == 0
-        ? '低強度（初心者・関節に優しい）'
-        : _loadLevelIndex == 1
+    final loadHint =
+        _loadLevelIndex == 0
+            ? '低強度（初心者・関節に優しい）'
+            : _loadLevelIndex == 1
             ? '中強度（標準的な負荷）'
             : '高強度（上級者向け・注意事項必須）';
     setState(() {
@@ -164,8 +165,9 @@ class _HomePageState extends State<HomePage> {
           '以下のユーザー入力と選択された負荷(${loadLabel}: ${loadHint})に合わせ、必ず各プランに具体的な種目(exercises)を含む3つの提案をJSONで作成してください。';
       // 種目リストのみを生成
       final exercises = await _ai.generateExercises(
-          '次の条件に合う具体的な種目のみのリストをJSONで返してください（フォーマット: {"exercises":[{name,sets,repsOrSeconds,rest,notes,tips:[string],steps:[string]}]}）。\n'
-          '$hint\nユーザー入力: $input\n希望負荷: ${loadLabel}');
+        '次の条件に合う具体的な種目のみのリストをJSONで返してください（フォーマット: {"exercises":[{name,sets,repsOrSeconds,rest,notes,tips:[string],steps:[string]}]}）。\n'
+        '$hint\nユーザー入力: $input\n希望負荷: ${loadLabel}',
+      );
       setState(() => _exercises = exercises);
       // 履歴として保存
       await HistoryRepository().saveLastExercises(exercises);
@@ -173,9 +175,8 @@ class _HomePageState extends State<HomePage> {
         setState(() => _lastExercises = exercises);
       }
     } catch (e) {
-      final msg = e is AIServiceException
-          ? e.message
-          : '生成に失敗しました。しばらくして再試行してください。';
+      final msg =
+          e is AIServiceException ? e.message : '生成に失敗しました。しばらくして再試行してください。';
       setState(() => _error = msg);
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -199,9 +200,21 @@ class _HomePageState extends State<HomePage> {
         selectedIndex: _currentIndex,
         onDestinationSelected: (i) => setState(() => _currentIndex = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'ホーム'),
-          NavigationDestination(icon: Icon(Icons.calendar_today_outlined), selectedIcon: Icon(Icons.calendar_today), label: 'カレンダー'),
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'マイページ'),
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'ホーム',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_today_outlined),
+            selectedIcon: Icon(Icons.calendar_today),
+            label: 'カレンダー',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'マイページ',
+          ),
         ],
       ),
     );
@@ -215,13 +228,13 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-              _HeaderCard(
-                controller: _searchController,
-                onSearch: _onSearch,
-                loadLevelIndex: _loadLevelIndex,
-                onSelectLoad: (i) => setState(() => _loadLevelIndex = i),
-                onAddDemo: _addDemoExercise,
-              ),
+            _HeaderCard(
+              controller: _searchController,
+              onSearch: _onSearch,
+              loadLevelIndex: _loadLevelIndex,
+              onSelectLoad: (i) => setState(() => _loadLevelIndex = i),
+              onAddDemo: _addDemoExercise,
+            ),
             const SizedBox(height: 16),
             if (_loading) ...[
               const Center(
@@ -237,93 +250,112 @@ class _HomePageState extends State<HomePage> {
               Text(
                 'AI提案 種目リスト',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1F2A37),
-                    ),
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1F2A37),
+                ),
               ),
               const SizedBox(height: 12),
-              _ListCard(children: [
-                for (final ex in _exercises)
-                  _TrainingTile(
-                    color: const Color(0xFFEFF8E7),
-                    iconColor: const Color(0xFF16A34A),
-                    icon: Icons.fitness_center,
-                    title: ex.name,
-                    subtitle1: 'セット: ${ex.sets ?? '-'}  回数/秒数: ${ex.repsOrSeconds ?? '-'}',
-                    subtitle2: (ex.notes ?? '').isEmpty ? '—' : (ex.notes ?? ''),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => FitnessDetailPage(exercise: ex),
-                        ),
-                      ).then((_) => _loadFavorites());
-                    },
-                  ),
-              ]),
+              _ListCard(
+                children: [
+                  for (final ex in _exercises)
+                    _TrainingTile(
+                      color: const Color(0xFFEFF8E7),
+                      iconColor: const Color(0xFF16A34A),
+                      icon: Icons.fitness_center,
+                      title: ex.name,
+                      subtitle1:
+                          'セット: ${ex.sets ?? '-'}  回数/秒数: ${ex.repsOrSeconds ?? '-'}',
+                      subtitle2:
+                          (ex.notes ?? '').isEmpty ? '—' : (ex.notes ?? ''),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FitnessDetailPage(exercise: ex),
+                          ),
+                        ).then((_) => _loadFavorites());
+                      },
+                    ),
+                ],
+              ),
               const SizedBox(height: 16),
             ],
             Text(
               'お気に入りのトレーニング',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1F2A37),
-                  ),
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1F2A37),
+              ),
             ),
             const SizedBox(height: 12),
             if (_favorites.isEmpty)
-              const Text('お気に入り登録された種目はまだありません。', style: TextStyle(color: Color(0xFF6B7280)))
+              const Text(
+                'お気に入り登録された種目はまだありません。',
+                style: TextStyle(color: Color(0xFF6B7280)),
+              )
             else
-              _ListCard(children: [
-                for (final ex in _favorites)
-                  _TrainingTile(
-                    color: const Color(0xFFE9E3FF),
-                    iconColor: const Color(0xFF6C63FF),
-                    icon: Icons.favorite,
-                    title: ex.name,
-                    subtitle1: 'セット: ${ex.sets ?? '-'}  回数/秒数: ${ex.repsOrSeconds ?? '-'}',
-                    subtitle2: (ex.notes ?? '').isEmpty ? '—' : (ex.notes ?? ''),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => FitnessDetailPage(exercise: ex)),
-                      ).then((_) => _loadFavorites());
-                    },
-                  ),
-              ]),
+              _ListCard(
+                children: [
+                  for (final ex in _favorites)
+                    _TrainingTile(
+                      color: const Color(0xFFE9E3FF),
+                      iconColor: const Color(0xFF6C63FF),
+                      icon: Icons.favorite,
+                      title: ex.name,
+                      subtitle1:
+                          'セット: ${ex.sets ?? '-'}  回数/秒数: ${ex.repsOrSeconds ?? '-'}',
+                      subtitle2:
+                          (ex.notes ?? '').isEmpty ? '—' : (ex.notes ?? ''),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FitnessDetailPage(exercise: ex),
+                          ),
+                        ).then((_) => _loadFavorites());
+                      },
+                    ),
+                ],
+              ),
             const SizedBox(height: 24),
 
             Text(
               '前回のトレーニング',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1F2A37),
-                  ),
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1F2A37),
+              ),
             ),
             const SizedBox(height: 12),
             if (_lastExercises.isEmpty)
-              const Text('まだ前回のトレーニングはありません。検索して提案を生成しましょう。',
-                  style: TextStyle(color: Color(0xFF6B7280)))
+              const Text(
+                'まだ前回のトレーニングはありません。検索して提案を生成しましょう。',
+                style: TextStyle(color: Color(0xFF6B7280)),
+              )
             else
-              _ListCard(children: [
-                for (final ex in _lastExercises)
-                  _TrainingTile(
-                    color: const Color(0xFFE6F4FF),
-                    iconColor: const Color(0xFF39A3F2),
-                    icon: Icons.fitness_center,
-                    title: ex.name,
-                    subtitle1: 'セット: ${ex.sets ?? '-'}  回数/秒数: ${ex.repsOrSeconds ?? '-'}',
-                    subtitle2: (ex.notes ?? '').isEmpty ? '—' : (ex.notes ?? ''),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => FitnessDetailPage(exercise: ex),
-                        ),
-                      );
-                    },
-                  ),
-              ]),
+              _ListCard(
+                children: [
+                  for (final ex in _lastExercises)
+                    _TrainingTile(
+                      color: const Color(0xFFE6F4FF),
+                      iconColor: const Color(0xFF39A3F2),
+                      icon: Icons.fitness_center,
+                      title: ex.name,
+                      subtitle1:
+                          'セット: ${ex.sets ?? '-'}  回数/秒数: ${ex.repsOrSeconds ?? '-'}',
+                      subtitle2:
+                          (ex.notes ?? '').isEmpty ? '—' : (ex.notes ?? ''),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FitnessDetailPage(exercise: ex),
+                          ),
+                        );
+                      },
+                    ),
+                ],
+              ),
             const SizedBox(height: 24),
             SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
           ],
@@ -423,7 +455,10 @@ class _HeaderCard extends StatelessWidget {
                   decoration: InputDecoration(
                     hintText: '鍛えたい部位やトレーニング名を入力',
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 14,
+                    ),
                     filled: true,
                     fillColor: const Color(0xFFF3F4F6),
                     border: OutlineInputBorder(
@@ -436,7 +471,10 @@ class _HeaderCard extends StatelessWidget {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.4),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 1.4,
+                      ),
                     ),
                   ),
                 ),
@@ -449,7 +487,9 @@ class _HeaderCard extends StatelessWidget {
                     backgroundColor: Theme.of(context).colorScheme.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   onPressed: onSearch,
                   icon: const Icon(Icons.search, size: 18),
@@ -462,7 +502,9 @@ class _HeaderCard extends StatelessWidget {
                 child: OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   onPressed: onAddDemo,
                   icon: const Icon(Icons.flash_on_outlined, size: 18),
@@ -503,7 +545,12 @@ class _HeaderCard extends StatelessWidget {
 }
 
 class _LoadChip extends StatelessWidget {
-  const _LoadChip({required this.label, required this.selected, required this.color, required this.onTap});
+  const _LoadChip({
+    required this.label,
+    required this.selected,
+    required this.color,
+    required this.onTap,
+  });
   final String label;
   final bool selected;
   final Color color;
@@ -522,7 +569,11 @@ class _LoadChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
             const SizedBox(width: 6),
             Text(
               label,
@@ -578,7 +629,6 @@ class _ErrorBanner extends StatelessWidget {
   }
 }
 
-
 class _ListCard extends StatelessWidget {
   const _ListCard({required this.children});
   final List<Widget> children;
@@ -597,7 +647,7 @@ class _ListCard extends StatelessWidget {
             children[i],
             if (i != children.length - 1)
               const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
-          ]
+          ],
         ],
       ),
     );
@@ -640,7 +690,11 @@ class _TrainingTile extends StatelessWidget {
       ),
       title: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF111827)),
+        style: const TextStyle(
+          fontWeight: FontWeight.w800,
+          fontSize: 16,
+          color: Color(0xFF111827),
+        ),
       ),
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 4),
@@ -649,7 +703,11 @@ class _TrainingTile extends StatelessWidget {
           children: [
             Text(
               subtitle1,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280), fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF6B7280),
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 2),
             Text(
@@ -660,11 +718,19 @@ class _TrainingTile extends StatelessWidget {
               const SizedBox(height: 6),
               Row(
                 children: [
-                  const Icon(Icons.local_fire_department, size: 16, color: Color(0xFFEF4444)),
+                  const Icon(
+                    Icons.local_fire_department,
+                    size: 16,
+                    color: Color(0xFFEF4444),
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     '想定消費カロリー ${calories}kcal',
-                    style: const TextStyle(fontSize: 12, color: Color(0xFFEF4444), fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFFEF4444),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
@@ -737,7 +803,11 @@ class _CategoryItem extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               data.label,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF374151)),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF374151),
+              ),
             ),
           ],
         ),
