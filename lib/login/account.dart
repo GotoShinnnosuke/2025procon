@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'auth.dart';
+import 'forget.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/user_profile_repository.dart';
 
 // 認証ランディング: 登録 or ログイン選択
 class AuthLandingPage extends StatelessWidget {
@@ -59,6 +62,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _ageController = TextEditingController();
   final _heightController = TextEditingController();
   final _weightController = TextEditingController();
@@ -71,6 +75,7 @@ class _RegisterPageState extends State<RegisterPage> {
     super.initState();
     // デモ用の初期値をセット（毎回入力不要）
     _nameController.text = 'demo';
+    _emailController.text = 'demo@example.com';
     _ageController.text = '25';
     _heightController.text = '170';
     _weightController.text = '65';
@@ -85,6 +90,7 @@ class _RegisterPageState extends State<RegisterPage> {
           title: const Text('登録内容確認'),
           content: Text('''
 名前: ${_nameController.text}
+メール: ${_emailController.text}
 年齢: ${_ageController.text}
 身長: ${_heightController.text} cm
 体重: ${_weightController.text} kg
@@ -100,17 +106,59 @@ class _RegisterPageState extends State<RegisterPage> {
 
   void _saveProfile() async {
     Navigator.pop(context); // 確認ダイアログを閉じる
-    final repo = AuthRepository();
-    await repo.saveProfile(
-      name: _nameController.text,
-      age: int.parse(_ageController.text),
-      height: double.parse(_heightController.text),
-      weight: double.parse(_weightController.text),
-      userId: _nameController.text, // デモ: 名前をID代わりに
-      password: _passwordController.text,
-    );
-    if (!mounted) return;
-    Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+    try {
+      // Firebase Auth でユーザー作成
+      final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      await cred.user?.sendEmailVerification();
+
+      // Firestoreにプロフィール保存（UIDを主キー）
+      final uid = cred.user!.uid;
+      try {
+        await UserProfileRepository().setProfile(
+          uid: uid,
+          name: _nameController.text,
+          email: _emailController.text.trim(),
+          age: int.parse(_ageController.text),
+          height: double.parse(_heightController.text),
+          weight: double.parse(_weightController.text),
+        );
+      } catch (e) {
+        // Firestore保存に失敗した場合でも、ローカル保存と画面遷移は継続
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('プロフィールの保存に失敗しました（オフライン保存のみ）。後で再試行してください。')),
+          );
+        }
+      }
+
+      // ローカルにもキャッシュ（ログイン状態にはしない）
+      await AuthRepository().saveProfile(
+        name: _nameController.text,
+        age: int.parse(_ageController.text),
+        height: double.parse(_heightController.text),
+        weight: double.parse(_weightController.text),
+        userId: uid,
+        password: _passwordController.text,
+        email: _emailController.text.trim(),
+      );
+
+      if (!mounted) return;
+      // 確認メールの案内を出しつつホームへ遷移
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('確認メールを送信しました: ${_emailController.text.trim()}')),
+      );
+      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+    } on FirebaseAuthException catch (e) {
+      String msg = '登録に失敗しました';
+      if (e.code == 'email-already-in-use') msg = 'このメールアドレスは既に登録されています';
+      if (e.code == 'invalid-email') msg = 'メールアドレスの形式が正しくありません';
+      if (e.code == 'weak-password') msg = 'パスワードが弱すぎます（6文字以上推奨）';
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    }
   }
 
   @override
@@ -141,6 +189,21 @@ class _RegisterPageState extends State<RegisterPage> {
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
+                      TextFormField(
+                        controller: _emailController,
+                        decoration: const InputDecoration(
+                          labelText: 'メールアドレス',
+                          prefixIcon: Icon(Icons.email),
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'メールアドレスを入力してください';
+                          if (!value.contains('@')) return '正しいメール形式を入力してください';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: _nameController,
                         decoration: const InputDecoration(
@@ -253,7 +316,7 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final _idController = TextEditingController();
+  final _idController = TextEditingController(); // メールアドレスも可
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
@@ -267,18 +330,56 @@ class _LoginPageState extends State<LoginPage> {
 
   void _login() async {
     if (_formKey.currentState!.validate()) {
-      final repo = AuthRepository();
-      final ok = await repo.login(userId: _idController.text, password: _passwordController.text);
-      if (!mounted) return;
-      if (ok) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ID: ${_idController.text} でログインしました')),
-        );
-        Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('IDまたはパスワードが正しくありません')),
-        );
+      final input = _idController.text.trim();
+      try {
+        if (input.contains('@')) {
+          // Firebase Authでログイン（メール/パスワード）
+          final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+            email: input,
+            password: _passwordController.text,
+          );
+          final user = cred.user;
+          if (user != null && !user.emailVerified) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('メールアドレスが未確認です。受信メールのリンクから確認してください。')),
+            );
+          }
+          // Firestoreプロフィールを取得してローカルにキャッシュ
+          if (user != null) {
+            final prof = await UserProfileRepository().getProfile(user.uid);
+            if (prof != null) {
+              await AuthRepository().saveProfile(
+                name: (prof['name'] as String?) ?? user.displayName ?? '',
+                age: (prof['age'] as int?) ?? 0,
+                height: (prof['height'] as num?)?.toDouble() ?? 0,
+                weight: (prof['weight'] as num?)?.toDouble() ?? 0,
+                userId: user.uid,
+                password: _passwordController.text,
+                email: (prof['email'] as String?) ?? input,
+              );
+            } else {
+              await AuthRepository().setLoggedInUser(userId: user.uid, email: input);
+            }
+          }
+          if (!mounted) return;
+          Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+        } else {
+          // 既存のローカルIDログイン（デモ用途）
+          final ok = await AuthRepository().login(userId: input, password: _passwordController.text);
+          if (!mounted) return;
+          if (ok) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('ID: $input でログインしました')));
+            Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('IDまたはパスワードが正しくありません')));
+          }
+        }
+      } on FirebaseAuthException catch (e) {
+        String msg = 'ログインに失敗しました';
+        if (e.code == 'user-not-found') msg = 'ユーザーが見つかりません';
+        if (e.code == 'wrong-password') msg = 'パスワードが違います';
+        if (e.code == 'invalid-email') msg = 'メールアドレスの形式が正しくありません';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       }
     }
   }
@@ -363,6 +464,19 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         onPressed: _login,
                         child: const Text('ログイン', style: TextStyle(fontSize: 18, color: Colors.white)),
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const ForgetPage()),
+                            );
+                          },
+                          child: const Text('パスワードをお忘れの方はこちら'),
+                        ),
                       ),
                       const SizedBox(height: 12),
                       OutlinedButton.icon(

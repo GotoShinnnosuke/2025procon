@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart'; // ← Firebase設定ファイルを忘れずに！
+import '../firebase_options.dart'; // ← Firebase設定ファイルを忘れずに！
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

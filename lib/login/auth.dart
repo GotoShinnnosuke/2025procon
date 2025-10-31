@@ -7,6 +7,7 @@ class AuthRepository {
   static const _kHeight = 'height';
   static const _kWeight = 'weight';
   static const _kUserId = 'user_id';
+  static const _kEmail = 'email';
   static const _kPassword = 'password'; // 注意: デモ用途のみ
 
   Future<bool> isLoggedIn() async {
@@ -26,6 +27,7 @@ class AuthRepository {
     required double weight,
     required String userId,
     required String password,
+    String? email,
   }) async {
     final sp = await SharedPreferences.getInstance();
     await sp.setString(_kName, name);
@@ -34,6 +36,14 @@ class AuthRepository {
     await sp.setDouble(_kWeight, weight);
     await sp.setString(_kUserId, userId);
     await sp.setString(_kPassword, password);
+    if (email != null) await sp.setString(_kEmail, email);
+    await sp.setBool(_kLoggedIn, true);
+  }
+
+  Future<void> setLoggedInUser({required String userId, String? email}) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setString(_kUserId, userId);
+    if (email != null) await sp.setString(_kEmail, email);
     await sp.setBool(_kLoggedIn, true);
   }
 
@@ -57,6 +67,7 @@ class AuthRepository {
       'height': sp.getDouble(_kHeight),
       'weight': sp.getDouble(_kWeight),
       'userId': sp.getString(_kUserId),
+      'email': sp.getString(_kEmail),
     };
   }
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'auth.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/user_profile_repository.dart';
 
 class MyPage extends StatefulWidget {
   const MyPage({super.key});
@@ -10,21 +12,40 @@ class MyPage extends StatefulWidget {
 
 class _MyPageState extends State<MyPage> {
   final _formKey = GlobalKey<FormState>();
-
-  final _nameController = TextEditingController(text: "user");
-  final _ageController = TextEditingController(text: "20");
-  final _heightController = TextEditingController(text: "170");
-  final _weightController = TextEditingController(text: "60");
-  final _passwordController = TextEditingController(text: "123456");
+  final _nameController = TextEditingController(text: 'user');
+  final _ageController = TextEditingController(text: '20');
+  final _heightController = TextEditingController(text: '170');
+  final _weightController = TextEditingController(text: '55');
+  final _passwordController = TextEditingController(text: '123456');
 
   bool _obscurePassword = true;
 
-  void _saveProfile() {
-    if (_formKey.currentState!.validate()) {
-      // 実際はここでサーバーなどに送信する
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('プロフィールを保存しました')));
+  void _saveProfile() async {
+    if (!_formKey.currentState!.validate()) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ログイン状態を確認してください')),
+      );
+      return;
+    }
+    try {
+      await UserProfileRepository().updateProfile(
+        uid: user.uid,
+        name: _nameController.text,
+        age: int.tryParse(_ageController.text),
+        height: double.tryParse(_heightController.text),
+        weight: double.tryParse(_weightController.text),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('プロフィールを保存しました')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('保存に失敗しました。ネットワークを確認してください')),
+      );
     }
   }
 
@@ -42,7 +63,10 @@ class _MyPageState extends State<MyPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(title: const Text('マイページ'), centerTitle: true),
+      appBar: AppBar(
+        title: const Text('マイページ'),
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -56,8 +80,6 @@ class _MyPageState extends State<MyPage> {
                   child: Icon(Icons.person, size: 60, color: Colors.white),
                 ),
                 const SizedBox(height: 20),
-
-                // 名前
                 TextFormField(
                   controller: _nameController,
                   decoration: const InputDecoration(
@@ -65,13 +87,9 @@ class _MyPageState extends State<MyPage> {
                     prefixIcon: Icon(Icons.person),
                     border: OutlineInputBorder(),
                   ),
-                  validator:
-                      (value) =>
-                          value == null || value.isEmpty ? '名前を入力してください' : null,
+                  validator: (value) => value == null || value.isEmpty ? '名前を入力してください' : null,
                 ),
                 const SizedBox(height: 16),
-
-                // 年齢
                 TextFormField(
                   controller: _ageController,
                   keyboardType: TextInputType.number,
@@ -87,8 +105,6 @@ class _MyPageState extends State<MyPage> {
                   },
                 ),
                 const SizedBox(height: 16),
-
-                // 身長
                 TextFormField(
                   controller: _heightController,
                   keyboardType: TextInputType.number,
@@ -104,8 +120,6 @@ class _MyPageState extends State<MyPage> {
                   },
                 ),
                 const SizedBox(height: 16),
-
-                // 体重
                 TextFormField(
                   controller: _weightController,
                   keyboardType: TextInputType.number,
@@ -121,8 +135,6 @@ class _MyPageState extends State<MyPage> {
                   },
                 ),
                 const SizedBox(height: 16),
-
-                // パスワード
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
@@ -131,71 +143,39 @@ class _MyPageState extends State<MyPage> {
                     prefixIcon: const Icon(Icons.lock),
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility
-                            : Icons.visibility_off,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
+                      icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                     ),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'パスワードを入力してください';
-                    }
-                    if (value.length < 6) {
-                      return '6文字以上で入力してください';
-                    }
+                    if (value == null || value.isEmpty) return 'パスワードを入力してください';
+                    if (value.length < 6) return '6文字以上で入力してください';
                     return null;
                   },
                 ),
                 const SizedBox(height: 24),
-
-                // 保存ボタン
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurple,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 40,
-                      vertical: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   ),
                   onPressed: _saveProfile,
-                  child: const Text(
-                    'プロフィールを保存',
-                    style: TextStyle(fontSize: 18, color: Colors.white),
-                  ),
+                  child: const Text('プロフィールを保存', style: TextStyle(fontSize: 18, color: Colors.white)),
                 ),
                 const SizedBox(height: 20),
-
-                // ログアウト
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 40,
-                      vertical: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   ),
                   onPressed: () async {
                     await AuthRepository().logout();
                     if (!mounted) return;
-                    Navigator.of(context).pushNamedAndRemoveUntil('/auth', (route) => false);
+                    Navigator.pushNamedAndRemoveUntil(context, '/auth', (route) => false);
                   },
-                  child: const Text(
-                    'ログアウト',
-                    style: TextStyle(fontSize: 18, color: Colors.white),
-                  ),
+                  child: const Text('ログアウト', style: TextStyle(fontSize: 18, color: Colors.white)),
                 ),
               ],
             ),

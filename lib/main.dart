@@ -6,6 +6,7 @@ import 'models/training_menu.dart';
 import 'services/ai_service.dart';
 import 'login/account.dart';
 import 'login/mypage.dart';
+import 'login/profire_view_page.dart';
 import 'login/auth.dart';
 import 'calender/calender_screen.dart';
 import 'services/history.dart';
@@ -191,7 +192,7 @@ class _HomePageState extends State<HomePage> {
     } else if (_currentIndex == 1) {
       body = const CalendarScreen();
     } else {
-      body = const MyPage();
+      body = const ProfileView();
     }
 
     return Scaffold(
