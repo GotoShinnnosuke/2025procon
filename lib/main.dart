@@ -165,7 +165,7 @@ class _HomePageState extends State<HomePage> {
           '以下のユーザー入力と選択された負荷(${loadLabel}: ${loadHint})に合わせ、必ず各プランに具体的な種目(exercises)を含む3つの提案をJSONで作成してください。';
       // 種目リストのみを生成
       final exercises = await _ai.generateExercises(
-        '次の条件に合う具体的な種目のみのリストをJSONで返してください（フォーマット: {"exercises":[{name,sets,repsOrSeconds,rest,notes,tips:[string],steps:[string]}]}）。\n'
+        '次の条件に合う具体的な種目のみのリストをJSONで返してください（フォーマット: {"exercises":[{name,sets,repsOrSeconds,rest,notes,calories,tips:[string],steps:[string]}]}）。器具は使用不可（自重のみ）。ダンベル/バーベル/マシン/ケトルベル/チューブ等は不可。各種目に推定消費カロリー(calories: 整数,kcal)を必ず含めてください。\n'
         '$hint\nユーザー入力: $input\n希望負荷: ${loadLabel}',
       );
       setState(() => _exercises = exercises);

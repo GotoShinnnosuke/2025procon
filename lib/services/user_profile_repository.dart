@@ -46,5 +46,21 @@ class UserProfileRepository {
     final doc = await _col.doc(uid).get();
     return doc.data();
   }
+
+  /// ユーザー名（name）からメール/UIDを検索
+  Future<Map<String, String>?> findByName(String name) async {
+    final snap = await _col.where('name', isEqualTo: name).limit(1).get();
+    if (snap.docs.isEmpty) return null;
+    final d = snap.docs.first;
+    final data = d.data();
+    final email = (data['email']?.toString()).orNullIfEmpty();
+    return {
+      'uid': d.id,
+      if (email != null) 'email': email,
+    };
+  }
 }
 
+extension _StrX on String? {
+  String? orNullIfEmpty() => (this == null || this!.isEmpty) ? null : this;
+}

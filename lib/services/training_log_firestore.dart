@@ -16,14 +16,15 @@ class TrainingLogFirestoreRepository {
   Map<String, dynamic> _toDoc(TrainingLog log, {String? userId}) {
     return {
       'exerciseName': log.exerciseName,
+      'userId': userId ?? log.userId,
       'sets': log.sets,
       'repsOrSeconds': log.repsOrSeconds,
       'rest': log.rest,
       'notes': log.notes,
+      'calories': log.calories,
       'favoriteAtTime': log.favoriteAtTime,
       'completedAt': Timestamp.fromDate(log.completedAt),
       'deleted': log.deleted,
-      'userId': userId,
     };
   }
 
@@ -48,10 +49,12 @@ class TrainingLogFirestoreRepository {
       return TrainingLog(
         id: d.id,
         exerciseName: (j['exerciseName'] ?? '').toString(),
+        userId: j['userId']?.toString(),
         sets: j['sets'] is int ? j['sets'] as int : int.tryParse('${j['sets']}'),
         repsOrSeconds: j['repsOrSeconds']?.toString(),
         rest: j['rest']?.toString(),
         notes: j['notes']?.toString(),
+        calories: j['calories'] is int ? j['calories'] as int : int.tryParse('${j['calories']}'),
         favoriteAtTime: j['favoriteAtTime'] == true,
         completedAt: (j['completedAt'] is Timestamp)
             ? (j['completedAt'] as Timestamp).toDate()

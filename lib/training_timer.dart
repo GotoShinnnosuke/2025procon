@@ -4,6 +4,7 @@ import 'models/training_menu.dart';
 import 'services/favorites.dart';
 import 'services/training_log.dart';
 import 'services/training_log_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class TrainingTimerPage extends StatefulWidget {
   const TrainingTimerPage({super.key, required this.item});
@@ -175,7 +176,8 @@ class _TrainingTimerPageState extends State<TrainingTimerPage> {
                 FilledButton.icon(
                   onPressed: () async {
                     final fav = await FavoritesRepository().isFavorite(widget.item);
-                    final log = TrainingLog.fromExercise(widget.item, favorite: fav);
+                    final uid = FirebaseAuth.instance.currentUser?.uid;
+                    final log = TrainingLog.fromExercise(widget.item, favorite: fav, userId: uid);
                     bool saved = false;
                     try {
                       // Firestoreへ保存

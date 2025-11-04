@@ -39,7 +39,7 @@ class OpenAIAIService implements AIServiceBase {
         {
           'role': 'system',
           'content':
-              'あなたは認定パーソナルトレーナー。安全第一。関節痛や既往歴に配慮すること。必ずJSONのみを返す。構造は {"plans":[{name,durationWeeks,daysPerWeek,intensity,summary,exercises:[{name,sets,repsOrSeconds,rest,notes}],caution}] }。日本語で簡潔に。必ず3案返すこと。'
+              'あなたは認定パーソナルトレーナー。安全第一。関節痛や既往歴に配慮すること。必ずJSONのみを返す。構造は {"plans":[{name,durationWeeks,daysPerWeek,intensity,summary,exercises:[{name,sets,repsOrSeconds,rest,notes}],caution}] }。日本語で簡潔に。器具は使用不可（自重のみ）。ダンベル/バーベル/ケトルベル/マシン等の器具名は含めない。必ず3案返すこと。'
         },
         {
           'role': 'user',
@@ -111,7 +111,7 @@ class OpenAIAIService implements AIServiceBase {
         {
           'role': 'system',
           'content':
-              'あなたは認定パーソナルトレーナー。安全第一。必ずJSONのみを返す。構造は {"exercises":[{name,sets,repsOrSeconds,rest,notes,tips:[string],steps:[string]}] }。日本語で簡潔に。関節や既往歴に配慮し、過負荷にならないよう調整案もnotesに記載。必ず10件以内で返すこと。'
+              'あなたは認定パーソナルトレーナー。安全第一。必ずJSONのみを返す。構造は {"exercises":[{name,sets,repsOrSeconds,rest,notes,calories,tips:[string],steps:[string]}] }。日本語で簡潔に。関節や既往歴に配慮し、過負荷にならないよう調整案もnotesに記載。器具は使用不可（自重のみ）。ダンベル/バーベル/ケトルベル/マシン/チューブ等の器具名を含めない。必要なら床・壁・タオル程度の身近な物のみ可。各種目は推定消費カロリー(calories: 整数, 単位kcal)を含める。必ず10件以内で返すこと。'
         },
         {
           'role': 'user',

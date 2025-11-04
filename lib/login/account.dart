@@ -330,50 +330,23 @@ class _LoginPageState extends State<LoginPage> {
 
   void _login() async {
     if (_formKey.currentState!.validate()) {
-      final input = _idController.text.trim();
+      final email = _idController.text.trim();
       try {
-        if (input.contains('@')) {
-          // Firebase Authでログイン（メール/パスワード）
-          final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-            email: input,
-            password: _passwordController.text,
+        // メール/パスワードでログインのみ許可
+        final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: email,
+          password: _passwordController.text,
+        );
+        final user = cred.user;
+        if (user != null && !user.emailVerified) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('メールアドレスが未確認です。受信メールのリンクから確認してください。')),
           );
-          final user = cred.user;
-          if (user != null && !user.emailVerified) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('メールアドレスが未確認です。受信メールのリンクから確認してください。')),
-            );
-          }
-          // Firestoreプロフィールを取得してローカルにキャッシュ
-          if (user != null) {
-            final prof = await UserProfileRepository().getProfile(user.uid);
-            if (prof != null) {
-              await AuthRepository().saveProfile(
-                name: (prof['name'] as String?) ?? user.displayName ?? '',
-                age: (prof['age'] as int?) ?? 0,
-                height: (prof['height'] as num?)?.toDouble() ?? 0,
-                weight: (prof['weight'] as num?)?.toDouble() ?? 0,
-                userId: user.uid,
-                password: _passwordController.text,
-                email: (prof['email'] as String?) ?? input,
-              );
-            } else {
-              await AuthRepository().setLoggedInUser(userId: user.uid, email: input);
-            }
-          }
-          if (!mounted) return;
-          Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
-        } else {
-          // 既存のローカルIDログイン（デモ用途）
-          final ok = await AuthRepository().login(userId: input, password: _passwordController.text);
-          if (!mounted) return;
-          if (ok) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('ID: $input でログインしました')));
-            Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('IDまたはパスワードが正しくありません')));
-          }
         }
+        // ログイン状態を記録（簡易キャッシュ）
+        await AuthRepository().setLoggedInUser(userId: user?.uid ?? email, email: email);
+        if (!mounted) return;
+        Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
       } on FirebaseAuthException catch (e) {
         String msg = 'ログインに失敗しました';
         if (e.code == 'user-not-found') msg = 'ユーザーが見つかりません';
@@ -429,12 +402,18 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       TextFormField(
                         controller: _idController,
+                        keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(
-                          labelText: 'ユーザーID',
-                          prefixIcon: Icon(Icons.person),
+                          labelText: 'メールアドレス',
+                          hintText: 'example@example.com',
+                          prefixIcon: Icon(Icons.email),
                           border: OutlineInputBorder(),
                         ),
-                        validator: (value) => value == null || value.isEmpty ? 'IDを入力してください' : null,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'メールアドレスを入力してください';
+                          if (!value.contains('@')) return '正しいメール形式を入力してください';
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
                       TextFormField(

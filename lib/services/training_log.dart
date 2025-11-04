@@ -5,10 +5,12 @@ import '../models/training_menu.dart';
 class TrainingLog {
   final String id;
   final String exerciseName;
+  final String? userId;
   final int? sets;
   final String? repsOrSeconds;
   final String? rest;
   final String? notes;
+  final int? calories;
   final bool favoriteAtTime;
   final DateTime completedAt;
   final bool deleted;
@@ -17,23 +19,27 @@ class TrainingLog {
     required this.id,
     required this.exerciseName,
     required this.completedAt,
+    this.userId,
     this.sets,
     this.repsOrSeconds,
     this.rest,
     this.notes,
+    this.calories,
     this.favoriteAtTime = false,
     this.deleted = false,
   });
 
-  factory TrainingLog.fromExercise(ExerciseItem item, {required bool favorite}) {
+  factory TrainingLog.fromExercise(ExerciseItem item, {required bool favorite, String? userId}) {
     final ts = DateTime.now().millisecondsSinceEpoch;
     return TrainingLog(
       id: 'log_${ts}_${item.name}',
       exerciseName: item.name,
+      userId: userId,
       sets: item.sets,
       repsOrSeconds: item.repsOrSeconds,
       rest: item.rest,
       notes: item.notes,
+      calories: item.calories,
       favoriteAtTime: favorite,
       completedAt: DateTime.now(),
     );
@@ -42,10 +48,12 @@ class TrainingLog {
   Map<String, dynamic> toJson() => {
         'id': id,
         'exerciseName': exerciseName,
+        'userId': userId,
         'sets': sets,
         'repsOrSeconds': repsOrSeconds,
         'rest': rest,
         'notes': notes,
+        'calories': calories,
         'favoriteAtTime': favoriteAtTime,
         'completedAt': completedAt.toIso8601String(),
         'deleted': deleted,
@@ -54,10 +62,12 @@ class TrainingLog {
   factory TrainingLog.fromJson(Map<String, dynamic> j) => TrainingLog(
         id: j['id']?.toString() ?? '',
         exerciseName: j['exerciseName']?.toString() ?? '',
+        userId: j['userId']?.toString(),
         sets: j['sets'] is int ? j['sets'] as int : int.tryParse('${j['sets']}'),
         repsOrSeconds: j['repsOrSeconds']?.toString(),
         rest: j['rest']?.toString(),
         notes: j['notes']?.toString(),
+        calories: j['calories'] is int ? j['calories'] as int : int.tryParse('${j['calories']}'),
         favoriteAtTime: j['favoriteAtTime'] == true,
         completedAt: DateTime.tryParse(j['completedAt']?.toString() ?? '') ?? DateTime.now(),
         deleted: j['deleted'] == true,
