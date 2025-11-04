@@ -8,7 +8,7 @@ import 'login/account.dart';
 import 'login/mypage.dart';
 import 'login/profire_view_page.dart';
 import 'login/auth.dart';
-import 'calender/calender_screen.dart';
+import 'calender/calendar_screen.dart';
 import 'services/history.dart';
 import 'services/favorites.dart';
 
@@ -150,10 +150,9 @@ class _HomePageState extends State<HomePage> {
       return;
     }
     final loadLabel = ['小', '中', '大'][_loadLevelIndex];
-    final loadHint =
-        _loadLevelIndex == 0
-            ? '低強度（初心者・関節に優しい）'
-            : _loadLevelIndex == 1
+    final loadHint = _loadLevelIndex == 0
+        ? '低強度（初心者・関節に優しい）'
+        : _loadLevelIndex == 1
             ? '中強度（標準的な負荷）'
             : '高強度（上級者向け・注意事項必須）';
     setState(() {
@@ -251,9 +250,9 @@ class _HomePageState extends State<HomePage> {
               Text(
                 'AI提案 種目リスト',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1F2A37),
-                ),
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1F2A37),
+                    ),
               ),
               const SizedBox(height: 12),
               _ListCard(
@@ -284,9 +283,9 @@ class _HomePageState extends State<HomePage> {
             Text(
               'お気に入りのトレーニング',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF1F2A37),
-              ),
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1F2A37),
+                  ),
             ),
             const SizedBox(height: 12),
             if (_favorites.isEmpty)
@@ -319,13 +318,12 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             const SizedBox(height: 24),
-
             Text(
               '前回のトレーニング',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF1F2A37),
-              ),
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1F2A37),
+                  ),
             ),
             const SizedBox(height: 12),
             if (_lastExercises.isEmpty)
