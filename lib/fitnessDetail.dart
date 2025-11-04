@@ -15,7 +15,11 @@ class FitnessDetailPage extends StatefulWidget {
 
 class _FitnessDetailPageState extends State<FitnessDetailPage> {
   bool _isFav = false;
-  ExerciseItem? get _targetExercise => widget.exercise ?? (widget.plan?.exercises.isNotEmpty == true ? widget.plan!.exercises.first : null);
+  ExerciseItem? get _targetExercise =>
+      widget.exercise ??
+      (widget.plan?.exercises.isNotEmpty == true
+          ? widget.plan!.exercises.first
+          : null);
 
   @override
   void initState() {
@@ -55,7 +59,8 @@ class _FitnessDetailPageState extends State<FitnessDetailPage> {
             SliverToBoxAdapter(
               child: _Header(
                 title: exercise?.name ?? plan?.name ?? 'プッシュアップ',
-                subtitle: exercise?.notes ?? plan?.summary ?? '胸筋・三頭筋・肩を鍛える基本トレーニング',
+                subtitle:
+                    exercise?.notes ?? plan?.summary ?? '胸筋・三頭筋・肩を鍛える基本トレーニング',
                 onBack: () => Navigator.of(context).maybePop(),
                 onFavorite: _toggleFav,
                 isFavorite: _isFav,
@@ -71,24 +76,24 @@ class _FitnessDetailPageState extends State<FitnessDetailPage> {
                     const _SectionTitle('トレーニング概要'),
                     const SizedBox(height: 12),
                     if (exercise != null)
-                      _ExerciseInfoCard(item: exercise!)
+                      _ExerciseInfoCard(item: exercise)
                     else if (plan != null)
-                      _PlanInfoCard(plan: plan!)
+                      _PlanInfoCard(plan: plan)
                     else
                       _InfoCard(cs: cs),
                     const SizedBox(height: 20),
                     if (exercise != null) ...[
                       const _SectionTitle('やり方'),
                       const SizedBox(height: 12),
-                      _HowToFromExercise(item: exercise!),
+                      _HowToFromExercise(item: exercise),
                       const SizedBox(height: 20),
                       const _SectionTitle('重要なコツ'),
                       const SizedBox(height: 12),
-                      _TipsFromExercise(item: exercise!),
+                      _TipsFromExercise(item: exercise),
                     ] else if (plan != null) ...[
                       const _SectionTitle('種目一覧'),
                       const SizedBox(height: 12),
-                      _ExerciseList(plan: plan!),
+                      _ExerciseList(plan: plan),
                       const SizedBox(height: 20),
                       const _SectionTitle('重要なコツ'),
                       const SizedBox(height: 12),
@@ -107,7 +112,8 @@ class _FitnessDetailPageState extends State<FitnessDetailPage> {
                     const SizedBox(height: 12),
                     const _VariationsList(),
                     const SizedBox(height: 24),
-                    SizedBox(height: MediaQuery.of(context).padding.bottom + 12),
+                    SizedBox(
+                        height: MediaQuery.of(context).padding.bottom + 12),
                   ],
                 ),
               ),
@@ -126,10 +132,12 @@ class _FitnessDetailPageState extends State<FitnessDetailPage> {
               if (ex != null) {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => TrainingTimerPage(item: ex)),
+                  MaterialPageRoute(
+                      builder: (_) => TrainingTimerPage(item: ex)),
                 );
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('開始できる種目がありません')));
+                ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('開始できる種目がありません')));
               }
             },
             icon: const Icon(Icons.play_arrow),
@@ -197,7 +205,9 @@ class _Header extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   _circleIconButton(Icons.arrow_back, onBack),
-                  _circleIconButton(isFavorite ? Icons.favorite : Icons.favorite_border, onFavorite),
+                  _circleIconButton(
+                      isFavorite ? Icons.favorite : Icons.favorite_border,
+                      onFavorite),
                 ],
               ),
             ),
@@ -305,12 +315,14 @@ class _ExerciseInfoCard extends StatelessWidget {
         children: [
           _InfoRow(icon: Icons.repeat, label: 'セット: ${item.sets ?? '-'}'),
           const Divider(height: 1),
-          _InfoRow(icon: Icons.timer, label: '回数/秒数: ${item.repsOrSeconds ?? '-'}'),
+          _InfoRow(
+              icon: Icons.timer, label: '回数/秒数: ${item.repsOrSeconds ?? '-'}'),
           const Divider(height: 1),
           _InfoRow(icon: Icons.bedtime_off, label: '休憩: ${item.rest ?? '-'}'),
           if ((item.notes ?? '').isNotEmpty) ...[
             const Divider(height: 1),
-            _InfoRow(icon: Icons.sticky_note_2_outlined, label: 'メモ: ${item.notes}')
+            _InfoRow(
+                icon: Icons.sticky_note_2_outlined, label: 'メモ: ${item.notes}')
           ],
         ],
       ),
@@ -331,14 +343,18 @@ class _PlanInfoCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(
         children: [
-          _InfoRow(icon: Icons.event, label: '期間: ${plan.durationWeeks ?? '-'}週'),
+          _InfoRow(
+              icon: Icons.event, label: '期間: ${plan.durationWeeks ?? '-'}週'),
           const Divider(height: 1),
-          _InfoRow(icon: Icons.calendar_today, label: '頻度: ${plan.daysPerWeek ?? '-'}日/週'),
+          _InfoRow(
+              icon: Icons.calendar_today,
+              label: '頻度: ${plan.daysPerWeek ?? '-'}日/週'),
           const Divider(height: 1),
           _InfoRow(icon: Icons.speed, label: '強度: ${plan.intensity ?? '-'}'),
           if ((plan.caution ?? '').isNotEmpty) ...[
             const Divider(height: 1),
-            _InfoRow(icon: Icons.warning_amber_rounded, label: '注意: ${plan.caution}')
+            _InfoRow(
+                icon: Icons.warning_amber_rounded, label: '注意: ${plan.caution}')
           ],
         ],
       ),
@@ -376,7 +392,11 @@ class _ExerciseRow extends StatelessWidget {
     final style = const TextStyle(fontSize: 13, color: Color(0xFF374151));
     return ListTile(
       dense: true,
-      title: Text(item.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF111827))),
+      title: Text(item.name,
+          style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF111827))),
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 4),
         child: Wrap(
@@ -384,9 +404,12 @@ class _ExerciseRow extends StatelessWidget {
           runSpacing: 6,
           children: [
             if (item.sets != null) Text('セット: ${item.sets}', style: style),
-            if ((item.repsOrSeconds ?? '').isNotEmpty) Text('回数/秒数: ${item.repsOrSeconds}', style: style),
-            if ((item.rest ?? '').isNotEmpty) Text('休憩: ${item.rest}', style: style),
-            if ((item.notes ?? '').isNotEmpty) Text('メモ: ${item.notes}', style: style),
+            if ((item.repsOrSeconds ?? '').isNotEmpty)
+              Text('回数/秒数: ${item.repsOrSeconds}', style: style),
+            if ((item.rest ?? '').isNotEmpty)
+              Text('休憩: ${item.rest}', style: style),
+            if ((item.notes ?? '').isNotEmpty)
+              Text('メモ: ${item.notes}', style: style),
           ],
         ),
       ),
@@ -414,7 +437,10 @@ class _InfoRow extends StatelessWidget {
       ),
       title: Text(
         label,
-        style: const TextStyle(fontSize: 14, color: Color(0xFF374151), fontWeight: FontWeight.w700),
+        style: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFF374151),
+            fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -484,7 +510,8 @@ class _HowToFromExercise extends StatelessWidget {
 }
 
 class _StepItem extends StatelessWidget {
-  const _StepItem({required this.number, required this.title, required this.body});
+  const _StepItem(
+      {required this.number, required this.title, required this.body});
   final int number;
   final String title;
   final String body;
@@ -504,18 +531,25 @@ class _StepItem extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
             ),
             alignment: Alignment.center,
-            child: Text('$number', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+            child: Text('$number',
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.w800)),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF111827))),
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF111827))),
                 const SizedBox(height: 4),
                 Text(
                   body,
-                  style: const TextStyle(fontSize: 13, color: Color(0xFF374151), height: 1.6),
+                  style: const TextStyle(
+                      fontSize: 13, color: Color(0xFF374151), height: 1.6),
                 ),
               ],
             ),
@@ -599,7 +633,8 @@ class _TipRow extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF1F2937), height: 1.6),
+              style: const TextStyle(
+                  fontSize: 13, color: Color(0xFF1F2937), height: 1.6),
             ),
           ),
         ],
@@ -684,12 +719,16 @@ class _VariationCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF111827)),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      color: Color(0xFF111827)),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   body,
-                  style: const TextStyle(fontSize: 13, color: Color(0xFF4B5563), height: 1.6),
+                  style: const TextStyle(
+                      fontSize: 13, color: Color(0xFF4B5563), height: 1.6),
                 ),
               ],
             ),
