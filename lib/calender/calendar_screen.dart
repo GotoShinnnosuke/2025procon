@@ -54,11 +54,11 @@ class CalendarScreenState extends State<CalendarScreen> {
           final daily = _getWorkoutsForDay(day);
           final totalDuration = daily.fold<int>(
             0,
-            (sum, w) => sum + w.duration,
+            (sum, w) => sum + (w.duration ?? 0),
           );
           final totalCalories = daily.fold<int>(
             0,
-            (sum, w) => sum + w.calories,
+            (sum, w) => sum + (w.calories ?? 0),
           );
           return {
             'day': '${day.month}/${day.day}',
@@ -120,26 +120,25 @@ class CalendarScreenState extends State<CalendarScreen> {
                           ),
                         ),
                         gridData: const FlGridData(show: false),
-                        barGroups:
-                            _weeklyStats.asMap().entries.map((entry) {
-                              int index = entry.key;
-                              final data = entry.value;
-                              return BarChartGroupData(
-                                x: index,
-                                barRods: [
-                                  BarChartRodData(
-                                    toY: data['duration'].toDouble(),
-                                    color: Colors.deepPurple,
-                                    width: 8,
-                                  ),
-                                  BarChartRodData(
-                                    toY: (data['calories'] / 10).toDouble(),
-                                    color: Colors.orangeAccent,
-                                    width: 8,
-                                  ),
-                                ],
-                              );
-                            }).toList(),
+                        barGroups: _weeklyStats.asMap().entries.map((entry) {
+                          int index = entry.key;
+                          final data = entry.value;
+                          return BarChartGroupData(
+                            x: index,
+                            barRods: [
+                              BarChartRodData(
+                                toY: data['duration'].toDouble(),
+                                color: Colors.deepPurple,
+                                width: 8,
+                              ),
+                              BarChartRodData(
+                                toY: (data['calories'] / 10).toDouble(),
+                                color: Colors.orangeAccent,
+                                width: 8,
+                              ),
+                            ],
+                          );
+                        }).toList(),
                       ),
                     ),
                   ),

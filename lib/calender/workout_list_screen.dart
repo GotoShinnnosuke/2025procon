@@ -11,13 +11,13 @@ class WorkoutListScreen extends StatelessWidget {
     final workouts = [
       Workout(
         name: '筋トレ10回',
-        duration: '10分',
+        durationLabel: '10分',
         imageUrl: '',
         description: 'ここに詳細が入ります',
       ),
       Workout(
         name: 'ランニング5km',
-        duration: '30分',
+        durationLabel: '30分',
         imageUrl: '',
         description: 'ここに詳細が入ります',
       ),
@@ -34,13 +34,8 @@ class WorkoutListScreen extends StatelessWidget {
             child: ListTile(
               leading: const Icon(Icons.fitness_center),
               title: Text(workout.name),
-              subtitle: Text(workout.duration),
-              onTap: () {
-                showDialog(
-                  context: context,
-                  builder: (_) => WorkoutDetailDialog(workout: workout),
-                );
-              },
+              subtitle: Text(workout.durationLabel ?? '-'),
+              onTap: () => showWorkoutDetailDialog(context, workout),
             ),
           );
         },
