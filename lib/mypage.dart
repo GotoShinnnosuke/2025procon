@@ -1,6 +1,7 @@
 import 'package:fitness/main.dart';
 import 'package:flutter/material.dart';
 import 'main.dart'; // 追加
+
 class MyPage extends StatefulWidget {
   const MyPage({super.key});
 
@@ -164,7 +165,8 @@ class _MyPageState extends State<MyPage> {
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurple,
-                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 40, vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
@@ -181,19 +183,18 @@ class _MyPageState extends State<MyPage> {
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
-                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 40, vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
                   ),
                   onPressed: () {
-                  
-Navigator.pushReplacement(
-  context,
-  MaterialPageRoute(builder: (context) => const SelectScreen()),
-);
-
-
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const SelectScreen()),
+                    );
                   },
                   child: const Text(
                     'ログアウト',
