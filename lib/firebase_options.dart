@@ -24,8 +24,6 @@ class DefaultFirebaseOptions {
         return android;
       case TargetPlatform.iOS:
         return ios;
-      case TargetPlatform.macOS:
-        return macos;
       case TargetPlatform.windows:
         return windows;
       case TargetPlatform.linux:
@@ -50,21 +48,20 @@ class DefaultFirebaseOptions {
     measurementId: 'G-VCRPXX56QE',
   );
 
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyC2SrigqopJX4Q3OjBCjiz0v6c2sg6_t_s',
+    appId: '1:697743747159:android:6037be3172ae9304f5db12',
+    messagingSenderId: '697743747159',
+    projectId: 'procoup-6a3f3',
+    storageBucket: 'procoup-6a3f3.firebasestorage.app',
+  );
+
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCYDFTIV9wbw1-l--6HJsub-VqyUR3u5Hw',
     appId: '1:697743747159:ios:9dafc00199e2a3d0f5db12',
     messagingSenderId: '697743747159',
     projectId: 'procoup-6a3f3',
     storageBucket: 'procoup-6a3f3.firebasestorage.app',
-    iosBundleId: 'com.example.fitness',
-  );
-
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBYped-JrELZIwYxyUHfqUpsghyrsBE1c0',
-    appId: '1:730858146659:ios:1b55116f0f42eb117ae156',
-    messagingSenderId: '730858146659',
-    projectId: 'mail-base',
-    storageBucket: 'mail-base.firebasestorage.app',
     iosBundleId: 'com.example.fitness',
   );
 
@@ -77,13 +74,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'procoup-6a3f3.firebasestorage.app',
     measurementId: 'G-BFZJLT6199',
   );
-
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyC2SrigqopJX4Q3OjBCjiz0v6c2sg6_t_s',
-    appId: '1:697743747159:android:6037be3172ae9304f5db12',
-    messagingSenderId: '697743747159',
-    projectId: 'procoup-6a3f3',
-    storageBucket: 'procoup-6a3f3.firebasestorage.app',
-  );
-
 }
