@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'mypage.dart';
 import 'auth.dart';
+import '../services/user_profile_repository.dart';
 
 class ProfileView extends StatefulWidget {
   const ProfileView({super.key});
@@ -31,14 +32,18 @@ class _ProfileViewState extends State<ProfileView> {
   }
 
   Future<void> _loadProfile() async {
-    final profile = await AuthRepository().getProfile();
     final user = FirebaseAuth.instance.currentUser;
+    Map<String, dynamic>? firestore;
+    if (user != null) {
+      firestore = await UserProfileRepository().getProfile(user.uid);
+    }
+    final cache = await AuthRepository().getProfile();
     setState(() {
-      _name = (profile['name'] as String?) ?? user?.displayName;
-      _email = (profile['email'] as String?) ?? user?.email;
-      _age = profile['age'] as int?;
-      _height = profile['height'] as double?;
-      _weight = profile['weight'] as double?;
+      _name = (firestore?['name'] as String?) ?? (cache['name'] as String?) ?? user?.displayName;
+      _email = (firestore?['email'] as String?) ?? (cache['email'] as String?) ?? user?.email;
+      _age = (firestore?['age'] as int?) ?? (cache['age'] as int?);
+      _height = (firestore?['height'] as num?)?.toDouble() ?? (cache['height'] as double?);
+      _weight = (firestore?['weight'] as num?)?.toDouble() ?? (cache['weight'] as double?);
     });
   }
 

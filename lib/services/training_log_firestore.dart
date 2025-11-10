@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import '../models/training_menu.dart';
 import 'training_log.dart';
@@ -30,7 +31,9 @@ class TrainingLogFirestoreRepository {
 
   Future<void> add(TrainingLog log) async {
     // Firebase初期化が未完了の場合は例外が飛ぶため呼び出し側でcatch推奨
-    final uid = await _userId();
+    String? uid = log.userId;
+    uid ??= FirebaseAuth.instance.currentUser?.uid;
+    uid ??= await _userId();
     await _col.doc(log.id).set(_toDoc(log, userId: uid));
   }
 
