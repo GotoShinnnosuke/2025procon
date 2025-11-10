@@ -20,6 +20,25 @@ class _MyPageState extends State<MyPage> {
 
   bool _obscurePassword = true;
 
+  @override
+  void initState() {
+    super.initState();
+    _prefillFromCache();
+  }
+
+  Future<void> _prefillFromCache() async {
+    final prof = await AuthRepository().getProfile();
+    setState(() {
+      _nameController.text = (prof['name'] as String?) ?? _nameController.text;
+      final age = prof['age'] as int?;
+      if (age != null) _ageController.text = '$age';
+      final h = prof['height'] as double?;
+      if (h != null) _heightController.text = h.toStringAsFixed(h.truncateToDouble() == h ? 0 : 1);
+      final w = prof['weight'] as double?;
+      if (w != null) _weightController.text = w.toStringAsFixed(w.truncateToDouble() == w ? 0 : 1);
+    });
+  }
+
   void _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
     final user = FirebaseAuth.instance.currentUser;
@@ -36,6 +55,16 @@ class _MyPageState extends State<MyPage> {
         age: int.tryParse(_ageController.text),
         height: double.tryParse(_heightController.text),
         weight: double.tryParse(_weightController.text),
+      );
+      // ローカルキャッシュも更新
+      await AuthRepository().saveProfile(
+        name: _nameController.text,
+        age: int.tryParse(_ageController.text) ?? 0,
+        height: double.tryParse(_heightController.text) ?? 0,
+        weight: double.tryParse(_weightController.text) ?? 0,
+        userId: user.uid,
+        password: _passwordController.text,
+        email: user.email,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

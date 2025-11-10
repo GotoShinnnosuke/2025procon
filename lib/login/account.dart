@@ -343,8 +343,15 @@ class _LoginPageState extends State<LoginPage> {
             const SnackBar(content: Text('メールアドレスが未確認です。受信メールのリンクから確認してください。')),
           );
         }
+        if (user == null) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('ログインに失敗しました。もう一度お試しください。')),
+          );
+          return;
+        }
         // ログイン状態を記録（簡易キャッシュ）
-        await AuthRepository().setLoggedInUser(userId: user?.uid ?? email, email: email);
+        await AuthRepository().setLoggedInUser(userId: user.uid, email: email);
         if (!mounted) return;
         Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
       } on FirebaseAuthException catch (e) {
@@ -353,6 +360,7 @@ class _LoginPageState extends State<LoginPage> {
         if (e.code == 'wrong-password') msg = 'パスワードが違います';
         if (e.code == 'invalid-email') msg = 'メールアドレスの形式が正しくありません';
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        // 画面遷移は行わず、入力画面に留まる
       }
     }
   }

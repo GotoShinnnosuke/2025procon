@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'profile_notifier.dart';
 
 class AuthRepository {
   static const _kLoggedIn = 'logged_in';
@@ -18,6 +19,7 @@ class AuthRepository {
   Future<void> logout() async {
     final sp = await SharedPreferences.getInstance();
     await sp.setBool(_kLoggedIn, false);
+    ProfileNotifier.instance.changed();
   }
 
   Future<void> saveProfile({
@@ -38,6 +40,7 @@ class AuthRepository {
     await sp.setString(_kPassword, password);
     if (email != null) await sp.setString(_kEmail, email);
     await sp.setBool(_kLoggedIn, true);
+    ProfileNotifier.instance.changed();
   }
 
   Future<void> setLoggedInUser({required String userId, String? email}) async {
@@ -45,6 +48,7 @@ class AuthRepository {
     await sp.setString(_kUserId, userId);
     if (email != null) await sp.setString(_kEmail, email);
     await sp.setBool(_kLoggedIn, true);
+    ProfileNotifier.instance.changed();
   }
 
   Future<bool> login({required String userId, required String password}) async {

@@ -11,6 +11,7 @@ import 'login/auth.dart';
 import 'calender/calendar_screen.dart';
 import 'services/history.dart';
 import 'services/favorites.dart';
+import 'login/profile_notifier.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -91,6 +92,8 @@ class _HomePageState extends State<HomePage> {
   int _loadLevelIndex = 1; // 0:小,1:中,2:大
   List<ExerciseItem> _lastExercises = [];
   List<ExerciseItem> _favorites = [];
+  String _displayName = '';
+  bool _listeningProfile = false;
 
   @override
   void initState() {
@@ -99,6 +102,11 @@ class _HomePageState extends State<HomePage> {
     _ai = OpenAIAIService(apiKey: key);
     _loadLastExercises();
     _loadFavorites();
+    _loadDisplayName();
+    if (!_listeningProfile) {
+      ProfileNotifier.instance.addListener(_loadDisplayName);
+      _listeningProfile = true;
+    }
   }
 
   Future<void> _loadLastExercises() async {
@@ -113,6 +121,14 @@ class _HomePageState extends State<HomePage> {
     final favs = await repo.getFavorites();
     if (!mounted) return;
     setState(() => _favorites = favs);
+  }
+
+  Future<void> _loadDisplayName() async {
+    final prof = await AuthRepository().getProfile();
+    final name = (prof['name'] as String?)?.trim();
+    final email = (prof['email'] as String?)?.trim();
+    if (!mounted) return;
+    setState(() => _displayName = (name != null && name.isNotEmpty) ? name : (email ?? 'ゲスト'));
   }
 
   Future<void> _addDemoExercise() async {
@@ -137,6 +153,10 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _searchController.dispose();
+    if (_listeningProfile) {
+      ProfileNotifier.instance.removeListener(_loadDisplayName);
+      _listeningProfile = false;
+    }
     super.dispose();
   }
 
@@ -228,6 +248,17 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (_displayName.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'こんにちは、$_displayName さん',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF111827),
+                      ),
+                ),
+              ),
             _HeaderCard(
               controller: _searchController,
               onSearch: _onSearch,

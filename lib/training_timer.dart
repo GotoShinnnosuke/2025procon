@@ -177,6 +177,13 @@ class _TrainingTimerPageState extends State<TrainingTimerPage> {
                   onPressed: () async {
                     final fav = await FavoritesRepository().isFavorite(widget.item);
                     final uid = FirebaseAuth.instance.currentUser?.uid;
+                    if (uid == null) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('記録にはログインが必要です。ログイン後にもう一度お試しください。')),
+                      );
+                      return;
+                    }
                     final log = TrainingLog.fromExercise(widget.item, favorite: fav, userId: uid);
                     bool saved = false;
                     try {
@@ -190,6 +197,9 @@ class _TrainingTimerPageState extends State<TrainingTimerPage> {
                       await TrainingLogRepository().add(log);
                     }
                     if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(saved ? '記録を保存しました' : 'オフラインに記録を保存しました')),
+                    );
                     Navigator.of(context).pop();
                   },
                   icon: const Icon(Icons.check_circle_outline),
