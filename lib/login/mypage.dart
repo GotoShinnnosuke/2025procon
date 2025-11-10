@@ -1,7 +1,10 @@
+import 'package:fitness/fitnessDetail.dart';
 import 'package:flutter/material.dart';
 import 'auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/user_profile_repository.dart';
+import 'security.dart';
+import 'addresschange.dart';
 
 class MyPage extends StatefulWidget {
   const MyPage({super.key});
@@ -136,28 +139,37 @@ class _MyPageState extends State<MyPage> {
                   },
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: 'パスワード',
-                    prefixIcon: const Icon(Icons.lock),
-                    border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(
-                      icon: Icon(_obscurePassword
-                          ? Icons.visibility
-                          : Icons.visibility_off),
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
-                    ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFF1F1),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 40, vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30)),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'パスワードを入力してください';
-                    if (value.length < 6) return '6文字以上で入力してください';
-                    return null;
-                  },
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const Addresschange()),
+                  ),
+                  child:
+                      const Text('メールアドレスの変更', style: TextStyle(fontSize: 20)),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFF1F1),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 40, vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30)),
+                  ),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SecurityPage()),
+                  ),
+                  child: const Text('パスワードの変更', style: TextStyle(fontSize: 20)),
+                ),
+                const SizedBox(height: 16),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurple,
