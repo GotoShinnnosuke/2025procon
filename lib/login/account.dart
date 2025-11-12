@@ -4,44 +4,115 @@ import 'forget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/user_profile_repository.dart';
 
-// 認証ランディング: 登録 or ログイン選択
 class AuthLandingPage extends StatelessWidget {
   const AuthLandingPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(title: const Text('アカウント')), 
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+      // グラデーション背景
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFFB3E5FC), // 明るい水色
+              Color(0xFFE1BEE7), // 薄い紫
+              Color(0xFFFFF9C4), // 柔らかい黄色
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // アプリロゴやアイコン
+                  const Icon(Icons.account_circle_rounded,
+                      size: 100, color: Colors.white),
+                  const SizedBox(height: 20),
+
+                  // タイトル
+                  const Text(
+                    'ようこそ！',
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      shadows: [
+                        Shadow(blurRadius: 8, color: Colors.black26),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  const Text(
+                    '新しいアカウントを作成するか、\n既にお持ちの方はログインしてください。',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white70,
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+
+                  // 登録ボタン
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.deepPurple,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 40, vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        elevation: 6,
+                        shadowColor: Colors.black45,
+                      ),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const RegisterPage()),
+                      ),
+                      child: const Text(
+                        'ユーザー登録を開始',
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ログインボタン
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.white, width: 2),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 40, vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginPage()),
+                      ),
+                      child: const Text(
+                        'ログインページへ',
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const RegisterPage()),
-              ),
-              child: const Text('ユーザー登録を開始', style: TextStyle(fontSize: 18)),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFF1F1),
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-              ),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginPage()),
-              ),
-              child: const Text('ログインページへ', style: TextStyle(fontSize: 20)),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -96,7 +167,9 @@ class _RegisterPageState extends State<RegisterPage> {
 体重: ${_weightController.text} kg
 '''),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('戻る')),
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('戻る')),
             TextButton(onPressed: _saveProfile, child: const Text('登録')),
           ],
         ),
@@ -129,7 +202,8 @@ class _RegisterPageState extends State<RegisterPage> {
         // Firestore保存に失敗した場合でも、ローカル保存と画面遷移は継続
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('プロフィールの保存に失敗しました（オフライン保存のみ）。後で再試行してください。')),
+            const SnackBar(
+                content: Text('プロフィールの保存に失敗しました（オフライン保存のみ）。後で再試行してください。')),
           );
         }
       }
@@ -148,7 +222,8 @@ class _RegisterPageState extends State<RegisterPage> {
       if (!mounted) return;
       // 確認メールの案内を出しつつホームへ遷移
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('確認メールを送信しました: ${_emailController.text.trim()}')),
+        SnackBar(
+            content: Text('確認メールを送信しました: ${_emailController.text.trim()}')),
       );
       Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
     } on FirebaseAuthException catch (e) {
@@ -183,7 +258,8 @@ class _RegisterPageState extends State<RegisterPage> {
             key: _formKey,
             child: SingleChildScrollView(
               child: Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
                 elevation: 4,
                 child: Padding(
                   padding: const EdgeInsets.all(20),
@@ -198,7 +274,8 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
-                          if (value == null || value.isEmpty) return 'メールアドレスを入力してください';
+                          if (value == null || value.isEmpty)
+                            return 'メールアドレスを入力してください';
                           if (!value.contains('@')) return '正しいメール形式を入力してください';
                           return null;
                         },
@@ -211,7 +288,9 @@ class _RegisterPageState extends State<RegisterPage> {
                           prefixIcon: Icon(Icons.person),
                           border: OutlineInputBorder(),
                         ),
-                        validator: (value) => value == null || value.isEmpty ? '名前を入力してください' : null,
+                        validator: (value) => value == null || value.isEmpty
+                            ? '名前を入力してください'
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -223,7 +302,8 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
-                          if (value == null || value.isEmpty) return '年齢を入力してください';
+                          if (value == null || value.isEmpty)
+                            return '年齢を入力してください';
                           if (int.tryParse(value) == null) return '数字で入力してください';
                           return null;
                         },
@@ -238,8 +318,10 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
-                          if (value == null || value.isEmpty) return '身長を入力してください';
-                          if (double.tryParse(value) == null) return '数値で入力してください';
+                          if (value == null || value.isEmpty)
+                            return '身長を入力してください';
+                          if (double.tryParse(value) == null)
+                            return '数値で入力してください';
                           return null;
                         },
                       ),
@@ -253,8 +335,10 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
-                          if (value == null || value.isEmpty) return '体重を入力してください';
-                          if (double.tryParse(value) == null) return '数値で入力してください';
+                          if (value == null || value.isEmpty)
+                            return '体重を入力してください';
+                          if (double.tryParse(value) == null)
+                            return '数値で入力してください';
                           return null;
                         },
                       ),
@@ -267,12 +351,16 @@ class _RegisterPageState extends State<RegisterPage> {
                           prefixIcon: const Icon(Icons.lock),
                           border: const OutlineInputBorder(),
                           suffixIcon: IconButton(
-                            icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
-                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                            icon: Icon(_obscurePassword
+                                ? Icons.visibility
+                                : Icons.visibility_off),
+                            onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword),
                           ),
                         ),
                         validator: (value) {
-                          if (value == null || value.isEmpty) return 'パスワードを入力してください';
+                          if (value == null || value.isEmpty)
+                            return 'パスワードを入力してください';
                           if (value.length < 6) return '6文字以上で入力してください';
                           return null;
                         },
@@ -291,7 +379,8 @@ class _RegisterPageState extends State<RegisterPage> {
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
             backgroundColor: Colors.deepPurple,
             foregroundColor: Colors.white,
             textStyle: const TextStyle(fontSize: 18),
@@ -341,7 +430,8 @@ class _LoginPageState extends State<LoginPage> {
           final user = cred.user;
           if (user != null && !user.emailVerified) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('メールアドレスが未確認です。受信メールのリンクから確認してください。')),
+              const SnackBar(
+                  content: Text('メールアドレスが未確認です。受信メールのリンクから確認してください。')),
             );
           }
           // Firestoreプロフィールを取得してローカルにキャッシュ
@@ -358,20 +448,26 @@ class _LoginPageState extends State<LoginPage> {
                 email: (prof['email'] as String?) ?? input,
               );
             } else {
-              await AuthRepository().setLoggedInUser(userId: user.uid, email: input);
+              await AuthRepository()
+                  .setLoggedInUser(userId: user.uid, email: input);
             }
           }
           if (!mounted) return;
-          Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+          Navigator.of(context)
+              .pushNamedAndRemoveUntil('/home', (route) => false);
         } else {
           // 既存のローカルIDログイン（デモ用途）
-          final ok = await AuthRepository().login(userId: input, password: _passwordController.text);
+          final ok = await AuthRepository()
+              .login(userId: input, password: _passwordController.text);
           if (!mounted) return;
           if (ok) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('ID: $input でログインしました')));
-            Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+            ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text('ID: $input でログインしました')));
+            Navigator.of(context)
+                .pushNamedAndRemoveUntil('/home', (route) => false);
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('IDまたはパスワードが正しくありません')));
+            ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('IDまたはパスワードが正しくありません')));
           }
         }
       } on FirebaseAuthException catch (e) {
@@ -379,7 +475,8 @@ class _LoginPageState extends State<LoginPage> {
         if (e.code == 'user-not-found') msg = 'ユーザーが見つかりません';
         if (e.code == 'wrong-password') msg = 'パスワードが違います';
         if (e.code == 'invalid-email') msg = 'メールアドレスの形式が正しくありません';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(msg)));
       }
     }
   }
@@ -421,7 +518,8 @@ class _LoginPageState extends State<LoginPage> {
             key: _formKey,
             child: SingleChildScrollView(
               child: Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
                 elevation: 4,
                 child: Padding(
                   padding: const EdgeInsets.all(20),
@@ -434,7 +532,9 @@ class _LoginPageState extends State<LoginPage> {
                           prefixIcon: Icon(Icons.person),
                           border: OutlineInputBorder(),
                         ),
-                        validator: (value) => value == null || value.isEmpty ? 'IDを入力してください' : null,
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'IDを入力してください'
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -445,12 +545,16 @@ class _LoginPageState extends State<LoginPage> {
                           prefixIcon: const Icon(Icons.lock),
                           border: const OutlineInputBorder(),
                           suffixIcon: IconButton(
-                            icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
-                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                            icon: Icon(_obscurePassword
+                                ? Icons.visibility
+                                : Icons.visibility_off),
+                            onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword),
                           ),
                         ),
                         validator: (value) {
-                          if (value == null || value.isEmpty) return 'パスワードを入力してください';
+                          if (value == null || value.isEmpty)
+                            return 'パスワードを入力してください';
                           if (value.length < 6) return '6文字以上で入力してください';
                           return null;
                         },
@@ -459,11 +563,15 @@ class _LoginPageState extends State<LoginPage> {
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.deepPurple,
-                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 40, vertical: 16),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30)),
                         ),
                         onPressed: _login,
-                        child: const Text('ログイン', style: TextStyle(fontSize: 18, color: Colors.white)),
+                        child: const Text('ログイン',
+                            style:
+                                TextStyle(fontSize: 18, color: Colors.white)),
                       ),
                       const SizedBox(height: 8),
                       Align(
@@ -472,7 +580,8 @@ class _LoginPageState extends State<LoginPage> {
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const ForgetPage()),
+                              MaterialPageRoute(
+                                  builder: (_) => const ForgetPage()),
                             );
                           },
                           child: const Text('パスワードをお忘れの方はこちら'),
@@ -484,8 +593,10 @@ class _LoginPageState extends State<LoginPage> {
                         icon: const Icon(Icons.flash_on_outlined),
                         label: const Text('デモでログイン（ワンタップ）'),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30)),
                         ),
                       ),
                     ],
