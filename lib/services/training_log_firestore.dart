@@ -23,6 +23,8 @@ class TrainingLogFirestoreRepository {
       'rest': log.rest,
       'notes': log.notes,
       'calories': log.calories,
+      'imageBase64': log.imageBase64,
+      'imageUrl': log.imageUrl,
       'favoriteAtTime': log.favoriteAtTime,
       'completedAt': Timestamp.fromDate(log.completedAt),
       'deleted': log.deleted,
@@ -58,6 +60,8 @@ class TrainingLogFirestoreRepository {
         rest: j['rest']?.toString(),
         notes: j['notes']?.toString(),
         calories: j['calories'] is int ? j['calories'] as int : int.tryParse('${j['calories']}'),
+        imageBase64: j['imageBase64']?.toString(),
+        imageUrl: j['imageUrl']?.toString(),
         favoriteAtTime: j['favoriteAtTime'] == true,
         completedAt: (j['completedAt'] is Timestamp)
             ? (j['completedAt'] as Timestamp).toDate()

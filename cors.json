@@ -1,0 +1,11 @@
+[
+  {
+    "origin": [
+      "http://localhost:56714",
+      "https://your-domain.example.com"
+    ],
+    "method": ["GET", "HEAD"],
+    "responseHeader": ["Content-Type"],
+    "maxAgeSeconds": 3600
+  }
+]

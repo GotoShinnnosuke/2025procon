@@ -1,10 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'models/training_menu.dart';
 import 'services/favorites.dart';
 import 'services/training_log.dart';
 import 'services/training_log_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'services/media_service.dart';
+import 'dart:typed_data';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class TrainingTimerPage extends StatefulWidget {
   const TrainingTimerPage({super.key, required this.item});
@@ -21,6 +25,8 @@ class _TrainingTimerPageState extends State<TrainingTimerPage> {
   Timer? _timer;
   int remaining = 0;
   bool running = false;
+  Future<MediaResult>? _imageFuture;
+  MediaResult? _imageResult;
 
   @override
   void initState() {
@@ -29,6 +35,13 @@ class _TrainingTimerPageState extends State<TrainingTimerPage> {
     currentSet = 1;
     setSeconds = _parseSeconds(widget.item.repsOrSeconds) ?? 30;
     remaining = setSeconds;
+    final key = const String.fromEnvironment('OPENAI_API_KEY');
+    _imageFuture = MediaService(apiKey: key)
+        .getExerciseImageDetailed(widget.item.name, view: 'side', size: 512);
+    _imageFuture!.then((res) {
+      if (!mounted) return;
+      setState(() => _imageResult = res);
+    });
   }
 
   @override
@@ -76,6 +89,19 @@ class _TrainingTimerPageState extends State<TrainingTimerPage> {
     }
   }
 
+  Future<String?> _uploadImageToStorage(Uint8List bytes, String uid, String logId) async {
+    try {
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('training-log-images/$uid/$logId.png');
+      await ref.putData(bytes, SettableMetadata(contentType: 'image/png'));
+      return await ref.getDownloadURL();
+    } catch (e) {
+      debugPrint('Image upload failed: $e');
+      return null;
+    }
+  }
+
   int? _parseSeconds(String? text) {
     if (text == null) return null;
     final s = text.replaceAll(' ', '');
@@ -116,6 +142,53 @@ class _TrainingTimerPageState extends State<TrainingTimerPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              FutureBuilder<MediaResult>(
+                future: _imageFuture,
+                builder: (context, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return Container(
+                      height: 160,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 8),
+                          Text('フォーム画像を生成中…'),
+                        ],
+                      ),
+                    );
+                  }
+                  final result = snap.data;
+                  final bytes = result?.bytes;
+                  if (bytes == null || bytes.isEmpty) {
+                    return Align(
+                      alignment: Alignment.centerRight,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          final key = const String.fromEnvironment('OPENAI_API_KEY');
+                          setState(() {
+                            _imageFuture = MediaService(apiKey: key)
+                                .getExerciseImageDetailed(widget.item.name, view: 'side', size: 512, useCache: false);
+                          });
+                        },
+                        child: Text(result?.errorMessage ?? 'フォーム画像を再取得'),
+                      ),
+                    );
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.memory(bytes, height: 160, fit: BoxFit.cover),
+                    ),
+                  );
+                },
+              ),
               Text(
                 widget.item.name,
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
@@ -184,21 +257,53 @@ class _TrainingTimerPageState extends State<TrainingTimerPage> {
                       );
                       return;
                     }
-                    final log = TrainingLog.fromExercise(widget.item, favorite: fav, userId: uid);
+                    const int firestoreSoftLimit = 900000; // bytes (chars) safety margin
+                    final imageData = _imageResult?.base64Data;
+                    final bool imageTooLarge = (imageData?.length ?? 0) > firestoreSoftLimit;
+                    final baseBytes = _imageResult?.bytes;
+                    String? imageUrl = _imageResult?.downloadUrl;
+
+                    final logId = 'log_${DateTime.now().millisecondsSinceEpoch}_${widget.item.name}';
+                    if (imageUrl == null && baseBytes != null && !imageTooLarge) {
+                      final uploaded = await _uploadImageToStorage(baseBytes, uid, logId);
+                      imageUrl = uploaded ?? imageUrl;
+                    }
+
+                    final log = TrainingLog.fromExercise(
+                      widget.item,
+                      favorite: fav,
+                      userId: uid,
+                      id: logId,
+                      imageBase64: imageTooLarge ? null : imageData,
+                      imageUrl: imageUrl,
+                    );
                     bool saved = false;
+                    String? errorMessage;
                     try {
                       // Firestoreへ保存
                       await TrainingLogFirestoreRepository().add(log);
                       saved = true;
-                    } catch (_) {
+                    } catch (e) {
+                      errorMessage = e.toString();
                       // Firestore保存に失敗した場合はローカルへフォールバック
                     }
                     if (!saved) {
                       await TrainingLogRepository().add(log);
                     }
                     if (!mounted) return;
+                    final messages = <String>[
+                      saved
+                          ? '記録を保存しました'
+                          : 'クラウド保存に失敗しました（${errorMessage ?? 'オフラインモード'}）。ローカルに記録しました',
+                    ];
+                    if (imageTooLarge) {
+                      messages.add('フォーム画像が大きすぎたためBase64保存を省略しました');
+                    }
+                    if (imageUrl == null && baseBytes != null) {
+                      messages.add('フォーム画像をクラウドに保存できませんでした');
+                    }
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(saved ? '記録を保存しました' : 'オフラインに記録を保存しました')),
+                      SnackBar(content: Text(messages.join('\n'))),
                     );
                     Navigator.of(context).pop();
                   },

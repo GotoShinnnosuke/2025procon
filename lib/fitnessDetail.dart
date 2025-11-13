@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:typed_data';
 import 'models/training_menu.dart';
 import 'training_timer.dart';
 import 'services/favorites.dart';
+import 'services/media_service.dart';
 
 class FitnessDetailPage extends StatefulWidget {
   const FitnessDetailPage({super.key, this.plan, this.exercise});
@@ -20,11 +22,31 @@ class _FitnessDetailPageState extends State<FitnessDetailPage> {
       (widget.plan?.exercises.isNotEmpty == true
           ? widget.plan!.exercises.first
           : null);
+  Uint8List? _headerImage;
+  bool _loadingImage = false;
 
   @override
   void initState() {
     super.initState();
     _loadFav();
+    final ex = _targetExercise;
+    final key = const String.fromEnvironment('OPENAI_API_KEY');
+    if (ex != null) {
+      setState(() {
+        _loadingImage = true;
+      });
+      MediaService(apiKey: key)
+          .getExerciseImageDetailed(ex.name, view: 'side', size: 512)
+          .then((result) {
+        if (!mounted) return;
+        setState(() {
+          _loadingImage = false;
+          if (result.bytes != null && result.bytes!.isNotEmpty) {
+            _headerImage = result.bytes;
+          }
+        });
+      });
+    }
   }
 
   Future<void> _loadFav() async {
@@ -64,6 +86,8 @@ class _FitnessDetailPageState extends State<FitnessDetailPage> {
                 onBack: () => Navigator.of(context).maybePop(),
                 onFavorite: _toggleFav,
                 isFavorite: _isFav,
+                backgroundImage: _headerImage,
+                loading: _loadingImage,
               ),
             ),
             SliverToBoxAdapter(
@@ -156,16 +180,19 @@ class _Header extends StatelessWidget {
     required this.onBack,
     required this.onFavorite,
     required this.isFavorite,
+    this.backgroundImage,
+    this.loading = false,
   });
   final String title;
   final String subtitle;
   final VoidCallback onBack;
   final VoidCallback onFavorite;
   final bool isFavorite;
+  final Uint8List? backgroundImage;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: ClipRRect(
@@ -175,12 +202,20 @@ class _Header extends StatelessWidget {
             Container(
               height: 200,
               width: double.infinity,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF2D2F33), Color(0xFF0F1115)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
+              decoration: BoxDecoration(
+                gradient: backgroundImage == null
+                    ? const LinearGradient(
+                        colors: [Color(0xFF2D2F33), Color(0xFF0F1115)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      )
+                    : null,
+                image: backgroundImage != null
+                    ? DecorationImage(
+                        image: MemoryImage(backgroundImage!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
               ),
             ),
             Positioned.fill(
@@ -218,6 +253,14 @@ class _Header extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (loading && backgroundImage == null)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        'フォーム画像生成中…',
+                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                    ),
                   Text(
                     title,
                     style: const TextStyle(

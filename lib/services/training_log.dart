@@ -11,6 +11,8 @@ class TrainingLog {
   final String? rest;
   final String? notes;
   final int? calories;
+  final String? imageBase64;
+  final String? imageUrl;
   final bool favoriteAtTime;
   final DateTime completedAt;
   final bool deleted;
@@ -25,14 +27,18 @@ class TrainingLog {
     this.rest,
     this.notes,
     this.calories,
+    this.imageBase64,
+    this.imageUrl,
     this.favoriteAtTime = false,
     this.deleted = false,
   });
 
-  factory TrainingLog.fromExercise(ExerciseItem item, {required bool favorite, String? userId}) {
+  factory TrainingLog.fromExercise(ExerciseItem item,
+      {required bool favorite, String? userId, String? imageBase64, String? imageUrl, String? id}) {
     final ts = DateTime.now().millisecondsSinceEpoch;
+    final generatedId = id ?? 'log_${ts}_${item.name}';
     return TrainingLog(
-      id: 'log_${ts}_${item.name}',
+      id: generatedId,
       exerciseName: item.name,
       userId: userId,
       sets: item.sets,
@@ -40,6 +46,8 @@ class TrainingLog {
       rest: item.rest,
       notes: item.notes,
       calories: item.calories,
+      imageBase64: imageBase64,
+      imageUrl: imageUrl ?? item.imageUrl,
       favoriteAtTime: favorite,
       completedAt: DateTime.now(),
     );
@@ -54,6 +62,8 @@ class TrainingLog {
         'rest': rest,
         'notes': notes,
         'calories': calories,
+        'imageBase64': imageBase64,
+        'imageUrl': imageUrl,
         'favoriteAtTime': favoriteAtTime,
         'completedAt': completedAt.toIso8601String(),
         'deleted': deleted,
@@ -68,6 +78,8 @@ class TrainingLog {
         rest: j['rest']?.toString(),
         notes: j['notes']?.toString(),
         calories: j['calories'] is int ? j['calories'] as int : int.tryParse('${j['calories']}'),
+        imageBase64: j['imageBase64']?.toString(),
+        imageUrl: j['imageUrl']?.toString(),
         favoriteAtTime: j['favoriteAtTime'] == true,
         completedAt: DateTime.tryParse(j['completedAt']?.toString() ?? '') ?? DateTime.now(),
         deleted: j['deleted'] == true,

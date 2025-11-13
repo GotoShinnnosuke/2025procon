@@ -7,6 +7,7 @@ class ExerciseItem {
   final List<String> tips; // コツ
   final List<String> steps; // 手順
   final int? calories; // 推定消費カロリー（kcal）
+  final String? imageUrl;
 
   ExerciseItem({
     required this.name,
@@ -17,6 +18,7 @@ class ExerciseItem {
     this.tips = const [],
     this.steps = const [],
     this.calories,
+    this.imageUrl,
   });
 
   factory ExerciseItem.fromJson(Map<String, dynamic> j) => ExerciseItem(
@@ -30,6 +32,7 @@ class ExerciseItem {
         calories: j['calories'] is int
             ? j['calories'] as int
             : int.tryParse('${j['calories']}'),
+        imageUrl: j['imageUrl']?.toString(),
       );
 }
 
