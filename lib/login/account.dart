@@ -193,20 +193,6 @@ class _LoginPageState extends State<LoginPage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (_) => const RegisterPage()),
-                            );
-                          },
-                          child: const Text('ユーザー登録はこちら'),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
                                   builder: (_) => const ForgetPage()),
                             );
                           },
@@ -231,6 +217,27 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
+        ),
+      ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.all(16),
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            backgroundColor:
+                const Color.fromARGB(255, 245, 45, 235), // ボタン色を変更可能
+            foregroundColor: Colors.white,
+            textStyle: const TextStyle(fontSize: 18),
+          ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const RegisterPage()),
+            );
+          },
+          child: const Text('新規登録はこちら'),
         ),
       ),
     );
