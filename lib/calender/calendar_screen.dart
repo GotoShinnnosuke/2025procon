@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:fl_chart/fl_chart.dart';
 
-import '../models/workout.dart';
+import '../models/training_log_entry.dart';
 import 'workout_detail_dialog.dart';
 
 class CalendarScreen extends StatefulWidget {
@@ -17,22 +18,34 @@ class CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
-  Stream<List<Workout>> get _workoutStream {
-    return FirebaseFirestore.instance.collection('workouts').snapshots().map(
+  Stream<List<TrainingLogEntry>> get _logStream {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return Stream.value(const <TrainingLogEntry>[]);
+    }
+
+    return FirebaseFirestore.instance
+        .collection('trainingLogs')
+        .where('userId', isEqualTo: user.uid)
+        .snapshots()
+        .map(
       (snapshot) {
         return snapshot.docs
-            .map((doc) => Workout.fromFirestore(
+            .map((doc) => TrainingLogEntry.fromFirestore(
                 doc.data() as Map<String, dynamic>, doc.id))
+            .where((entry) => !entry.deleted)
             .toList();
       },
     );
   }
 
-  List<Workout> _getWorkoutsForDay(List<Workout> workouts, DateTime day) {
-    return workouts.where((w) => isSameDay(w.date, day)).toList();
+  List<TrainingLogEntry> _getWorkoutsForDay(
+      List<TrainingLogEntry> workouts, DateTime day) {
+    return workouts.where((w) => isSameDay(w.completedAt, day)).toList();
   }
 
-  List<Map<String, dynamic>> _getWeeklyStats(List<Workout> workouts) {
+  List<Map<String, dynamic>> _getWeeklyStats(
+      List<TrainingLogEntry> workouts) {
     final today = DateTime.now();
     final last7Days =
         List.generate(7, (i) => today.subtract(Duration(days: i)));
@@ -40,13 +53,13 @@ class CalendarScreenState extends State<CalendarScreen> {
     return last7Days
         .map((day) {
           final daily = _getWorkoutsForDay(workouts, day);
-          final totalDuration =
-              daily.fold<int>(0, (sum, w) => sum + w.duration);
+          final totalSets =
+              daily.fold<int>(0, (sum, w) => sum + (w.sets ?? 0));
           final totalCalories =
-              daily.fold<int>(0, (sum, w) => sum + w.calories);
+              daily.fold<int>(0, (sum, w) => sum + (w.calories ?? 0));
           return {
             'day': '${day.month}/${day.day}',
-            'duration': totalDuration,
+            'sets': totalSets,
             'calories': totalCalories,
           };
         })
@@ -59,8 +72,8 @@ class CalendarScreenState extends State<CalendarScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('カレンダー'), centerTitle: true),
-      body: StreamBuilder<List<Workout>>(
-        stream: _workoutStream,
+      body: StreamBuilder<List<TrainingLogEntry>>(
+        stream: _logStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text('エラー: ${snapshot.error}'));
@@ -69,11 +82,18 @@ class CalendarScreenState extends State<CalendarScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final workouts = snapshot.data!;
+          final currentUser = FirebaseAuth.instance.currentUser;
+          if (currentUser == null) {
+            return const Center(
+              child: Text('ログイン後にトレーニング履歴を表示できます。'),
+            );
+          }
+
+          final logs = snapshot.data!;
           final selectedWorkouts = _selectedDay != null
-              ? _getWorkoutsForDay(workouts, _selectedDay!)
+              ? _getWorkoutsForDay(logs, _selectedDay!)
               : [];
-          final weeklyStats = _getWeeklyStats(workouts);
+          final weeklyStats = _getWeeklyStats(logs);
 
           return SingleChildScrollView(
             child: Column(
@@ -123,14 +143,15 @@ class CalendarScreenState extends State<CalendarScreen> {
                               ),
                             ),
                             gridData: const FlGridData(show: false),
-                            barGroups: weeklyStats.asMap().entries.map((entry) {
+                            barGroups:
+                                weeklyStats.asMap().entries.map((entry) {
                               int index = entry.key;
                               final data = entry.value;
                               return BarChartGroupData(
                                 x: index,
                                 barRods: [
                                   BarChartRodData(
-                                    toY: (data['duration'] as num).toDouble(),
+                                    toY: (data['sets'] as num).toDouble(),
                                     color: Colors.deepPurple,
                                     width: 8,
                                   ),
@@ -152,7 +173,7 @@ class CalendarScreenState extends State<CalendarScreen> {
                           Icon(Icons.square,
                               color: Colors.deepPurple, size: 16),
                           SizedBox(width: 4),
-                          Text('運動時間（分）'),
+                          Text('セット数'),
                           SizedBox(width: 12),
                           Icon(Icons.square,
                               color: Colors.orangeAccent, size: 16),
@@ -205,7 +226,7 @@ class CalendarScreenState extends State<CalendarScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: TableCalendar<Workout>(
+                  child: TableCalendar<TrainingLogEntry>(
                     firstDay: DateTime.utc(2020, 1, 1),
                     lastDay: DateTime.utc(2030, 12, 31),
                     focusedDay: _focusedDay,
@@ -231,7 +252,7 @@ class CalendarScreenState extends State<CalendarScreen> {
                         shape: BoxShape.circle,
                       ),
                     ),
-                    eventLoader: (day) => _getWorkoutsForDay(workouts, day),
+                    eventLoader: (day) => _getWorkoutsForDay(logs, day),
                   ),
                 ),
 
@@ -258,9 +279,9 @@ class CalendarScreenState extends State<CalendarScreen> {
                       ...selectedWorkouts.map(
                         (workout) => Card(
                           child: ListTile(
-                            title: Text(workout.name),
+                            title: Text(workout.exerciseName),
                             subtitle: Text(
-                              '時間: ${workout.duration}分 | カロリー: ${workout.calories}kcal',
+                              'セット: ${workout.sets ?? '-'} | カロリー: ${workout.calories ?? '-'}kcal',
                             ),
                             trailing: const Icon(Icons.info_outline),
                             onTap: () =>
