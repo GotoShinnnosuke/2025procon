@@ -128,7 +128,8 @@ class _HomePageState extends State<HomePage> {
     final name = (prof['name'] as String?)?.trim();
     final email = (prof['email'] as String?)?.trim();
     if (!mounted) return;
-    setState(() => _displayName = (name != null && name.isNotEmpty) ? name : (email ?? 'ゲスト'));
+    setState(() => _displayName =
+        (name != null && name.isNotEmpty) ? name : (email ?? 'ゲスト'));
   }
 
   Future<void> _addDemoExercise() async {

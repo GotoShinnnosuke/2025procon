@@ -5,7 +5,7 @@
       "https://your-domain.example.com"
     ],
     "method": ["GET", "HEAD"],
-    "responseHeader": ["Content-Type"],
+    "responseHeader": ["Content-Type", "Range", "Accept-Ranges", "Content-Length"],
     "maxAgeSeconds": 3600
   }
 ]
