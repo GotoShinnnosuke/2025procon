@@ -4,6 +4,7 @@ import 'models/training_menu.dart';
 import 'training_timer.dart';
 import 'services/favorites.dart';
 import 'services/media_service.dart';
+import 'package:video_player/video_player.dart';
 
 class FitnessDetailPage extends StatefulWidget {
   const FitnessDetailPage({super.key, this.plan, this.exercise});
@@ -24,6 +25,9 @@ class _FitnessDetailPageState extends State<FitnessDetailPage> {
           : null);
   Uint8List? _headerImage;
   bool _loadingImage = false;
+  VideoPlayerController? _videoController;
+  bool _loadingVideo = false;
+  String? _videoError;
 
   @override
   void initState() {
@@ -46,6 +50,7 @@ class _FitnessDetailPageState extends State<FitnessDetailPage> {
           }
         });
       });
+      _loadVideo(ex);
     }
   }
 
@@ -66,6 +71,100 @@ class _FitnessDetailPageState extends State<FitnessDetailPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(now ? 'お気に入りに追加しました' : 'お気に入りを解除しました')),
     );
+  }
+
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadVideo(ExerciseItem exercise) async {
+    final key = const String.fromEnvironment('OPENAI_API_KEY');
+    final media = MediaService(apiKey: key);
+    String? url = exercise.videoUrl?.trim();
+    url = (url != null && url.isNotEmpty)
+        ? url
+        : await media.getExerciseVideoUrl(exercise.name);
+    if (!mounted || url == null || url.isEmpty) return;
+    setState(() {
+      _loadingVideo = true;
+      _videoError = null;
+    });
+    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
+    try {
+      await controller.initialize();
+      controller.setLooping(true);
+      if (!mounted) {
+        controller.dispose();
+        return;
+      }
+      _videoController?.dispose();
+      setState(() {
+        _videoController = controller;
+        _loadingVideo = false;
+      });
+    } catch (e) {
+      controller.dispose();
+      if (!mounted) return;
+      setState(() {
+        _loadingVideo = false;
+        _videoError = 'フォーム動画を読み込めませんでした';
+      });
+    }
+  }
+
+  void _toggleVideoPlayback() {
+    final controller = _videoController;
+    if (controller == null) return;
+    setState(() {
+      if (controller.value.isPlaying) {
+        controller.pause();
+      } else {
+        controller.play();
+      }
+    });
+  }
+
+  Widget _buildVideoSection() {
+    final exercise = _targetExercise;
+    if (exercise == null) return const SizedBox.shrink();
+    final controller = _videoController;
+    if (_loadingVideo) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: _VideoLoadingCard(),
+      );
+    }
+    if (controller != null && controller.value.isInitialized) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle('フォーム動画'),
+          const SizedBox(height: 12),
+          _DetailVideoCard(
+            controller: controller,
+            onToggle: _toggleVideoPlayback,
+          ),
+          const SizedBox(height: 20),
+        ],
+      );
+    }
+    if (_videoError != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle('フォーム動画'),
+          const SizedBox(height: 12),
+          _VideoErrorBanner(
+            message: _videoError!,
+            onRetry: () => _loadVideo(exercise),
+          ),
+          const SizedBox(height: 20),
+        ],
+      );
+    }
+    return const SizedBox.shrink();
   }
 
   @override
@@ -105,6 +204,7 @@ class _FitnessDetailPageState extends State<FitnessDetailPage> {
                       _PlanInfoCard(plan: plan)
                     else
                       _InfoCard(cs: cs),
+                    _buildVideoSection(),
                     const SizedBox(height: 20),
                     if (exercise != null) ...[
                       const _SectionTitle('やり方'),
@@ -679,6 +779,115 @@ class _TipRow extends StatelessWidget {
               style: const TextStyle(
                   fontSize: 13, color: Color(0xFF1F2937), height: 1.6),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailVideoCard extends StatelessWidget {
+  const _DetailVideoCard({required this.controller, required this.onToggle});
+
+  final VideoPlayerController controller;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final aspect = controller.value.aspectRatio == 0
+        ? 16 / 9
+        : controller.value.aspectRatio;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          AspectRatio(
+            aspectRatio: aspect,
+            child: VideoPlayer(controller),
+          ),
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: CircleAvatar(
+              backgroundColor: Colors.black.withOpacity(0.7),
+              child: IconButton(
+                onPressed: onToggle,
+                icon: Icon(
+                  controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: VideoProgressIndicator(
+              controller,
+              allowScrubbing: true,
+              padding: const EdgeInsets.only(top: 4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VideoLoadingCard extends StatelessWidget {
+  const _VideoLoadingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          CircularProgressIndicator(),
+          SizedBox(height: 8),
+          Text('フォーム動画を読み込み中です'),
+        ],
+      ),
+    );
+  }
+}
+
+class _VideoErrorBanner extends StatelessWidget {
+  const _VideoErrorBanner({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF1F2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFECACA)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, color: Color(0xFFB91C1C)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(color: Color(0xFF991B1B)),
+            ),
+          ),
+          TextButton(
+            onPressed: onRetry,
+            child: const Text('再読み込み'),
           ),
         ],
       ),

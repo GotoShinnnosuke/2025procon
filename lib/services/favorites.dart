@@ -31,6 +31,8 @@ class FavoritesRepository {
               'notes': e.notes,
               'tips': e.tips,
               'steps': e.steps,
+              'imageUrl': e.imageUrl,
+              'videoUrl': e.videoUrl,
             })
         .toList();
     await sp.setString(_kFavExercises, jsonEncode({'exercises': jsonList}));

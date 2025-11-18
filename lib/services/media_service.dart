@@ -1,8 +1,10 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 
 class MediaResult {
   final Uint8List? bytes;
@@ -45,13 +47,22 @@ class MediaService {
         } catch (_) {}
       }
       try {
+        debugPrint(
+            'MediaService: checking storage cache for exercise=$exerciseName view=$view size=$size');
         storageUrl = await storageRef.getDownloadURL();
-        final imgRes = await http.get(Uri.parse(storageUrl!)).timeout(const Duration(seconds: 30));
+        final imgRes = await http
+            .get(Uri.parse(storageUrl!))
+            .timeout(const Duration(seconds: 30));
         if (imgRes.statusCode == 200) {
           final bytes = imgRes.bodyBytes;
           final b64 = base64Encode(bytes);
           await sp.setString(key, b64);
-          return MediaResult(bytes: bytes, base64Data: b64, downloadUrl: storageUrl, statusCode: 200);
+          return MediaResult(
+            bytes: bytes,
+            base64Data: b64,
+            downloadUrl: storageUrl,
+            statusCode: 200,
+          );
         }
       } catch (_) {
         storageUrl = null;
@@ -179,4 +190,31 @@ class MediaService {
     final cleaned = lower.replaceAll(RegExp(r'[^a-z0-9]+'), '_');
     return cleaned.replaceAll(RegExp(r'_+'), '_').replaceAll(RegExp(r'^_|_$'), '');
   }
+
+  /// Returns a download URL for a stored form video if available.
+  /// Upload videos to `exercise-form-videos/{exercise-name}/form.mp4`.
+  Future<String?> getExerciseVideoUrl(String exerciseName) async {
+    final storage = FirebaseStorage.instance;
+    final safeName = _sanitizeName(exerciseName);
+    final candidates = [
+      'exercise-form-videos/$safeName/form.mp4',
+      'exercise-form-videos/$safeName/form.webm',
+      'exercise-form-videos/$safeName/form.mov',
+    ];
+    for (final path in candidates) {
+      try {
+        final ref = storage.ref().child(path);
+        return await ref.getDownloadURL();
+      } on FirebaseException catch (e) {
+        if (e.code == 'object-not-found') {
+          continue;
+        }
+        rethrow;
+      } catch (_) {
+        continue;
+      }
+    }
+    return null;
+  }
 }
+
