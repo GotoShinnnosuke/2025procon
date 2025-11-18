@@ -25,7 +25,7 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     // デモ用の初期値をセット（毎回入力不要）
-    _idController.text = 'demo';
+    _idController.text = 'demo@example.com'; // メール形式に修正
     _passwordController.text = '123456';
   }
 
@@ -33,17 +33,13 @@ class _LoginPageState extends State<LoginPage> {
     if (_formKey.currentState!.validate()) {
       final email = _idController.text.trim();
       try {
-        // メール/パスワードでログインのみ許可
+        // メール/パスワードでログイン
         final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: email,
           password: _passwordController.text,
         );
         final user = cred.user;
-        if (user != null && !user.emailVerified) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('メールアドレスが未確認です。受信メールのリンクから確認してください。')),
-          );
-        }
+
         if (user == null) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
@@ -51,15 +47,29 @@ class _LoginPageState extends State<LoginPage> {
           );
           return;
         }
+
+        // メール未確認のチェック（ログインが成功した後に実行）
+        if (!user.emailVerified) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('メールアドレスが未確認です。受信メールのリンクから確認してください。')),
+          );
+        }
+
         // ログイン状態を記録（簡易キャッシュ）
         await AuthRepository().setLoggedInUser(userId: user.uid, email: email);
         if (!mounted) return;
         Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
       } on FirebaseAuthException catch (e) {
         String msg = 'ログインに失敗しました';
-        if (e.code == 'user-not-found') msg = 'ユーザーが見つかりません';
-        if (e.code == 'wrong-password') msg = 'パスワードが違います';
-        if (e.code == 'invalid-email') msg = 'メールアドレスの形式が正しくありません';
+        // Firebaseエラーコードに基づいたメッセージ
+        if (e.code == 'user-not-found' || e.code == 'invalid-credential') {
+            msg = 'ユーザーが見つからないか、メールアドレス/パスワードが違います';
+        } else if (e.code == 'wrong-password') {
+            msg = 'パスワードが違います'; 
+        } else if (e.code == 'invalid-email') {
+            msg = 'メールアドレスの形式が正しくありません';
+        }
+        if (!mounted) return;
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(msg)));
       }
@@ -69,14 +79,18 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _demoLogin() async {
     // デモプロフィールを保存してそのままログイン状態にする
     final repo = AuthRepository();
+    // ダミーのユーザーIDと情報でプロファイルを保存
     await repo.saveProfile(
-      name: 'demo',
+      name: 'デモユーザー',
       age: 25,
       height: 170.0,
       weight: 65.0,
-      userId: 'demo',
-      password: '123456',
+      userId: 'demo', // デモユーザーのIDを固定
+      password: '123456', // ダミーのパスワード
     );
+    // ログイン状態を記録
+    await repo.setLoggedInUser(userId: 'demo', email: 'demo@example.com');
+
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('デモユーザーでログインしました')),
@@ -109,7 +123,9 @@ class _LoginPageState extends State<LoginPage> {
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
+                    mainAxisSize: MainAxisSize.min, // コンテンツに応じてサイズを調整
                     children: [
+                      // メールアドレス/ID入力欄
                       TextFormField(
                         controller: _idController,
                         keyboardType: TextInputType.emailAddress,
@@ -119,12 +135,12 @@ class _LoginPageState extends State<LoginPage> {
                           prefixIcon: Icon(Icons.email),
                           border: OutlineInputBorder(),
                         ),
-
                         validator: (value) => value == null || value.isEmpty
-                            ? 'IDを入力してください'
+                            ? 'メールアドレスを入力してください'
                             : null,
                       ),
                       const SizedBox(height: 16),
+                      // パスワード入力欄
                       TextFormField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
@@ -148,9 +164,10 @@ class _LoginPageState extends State<LoginPage> {
                         },
                       ),
                       const SizedBox(height: 30),
+                      // ログインボタン
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepPurple,
+                          backgroundColor: const Color.fromARGB(255, 63, 169, 132),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 40, vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -162,6 +179,7 @@ class _LoginPageState extends State<LoginPage> {
                                 TextStyle(fontSize: 18, color: Colors.white)),
                       ),
                       const SizedBox(height: 8),
+                      // パスワードリセットリンク
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
@@ -172,15 +190,30 @@ class _LoginPageState extends State<LoginPage> {
                                   builder: (_) => const ForgetPage()),
                             );
                           },
-                          child: const Text('パスワードをお忘れの方はこちら'),
+                          child: const Text('パスワードをお忘れの方はこちら', style: TextStyle(fontSize: 16)),
                         ),
                       ),
                       const SizedBox(height: 12),
+                      // 新規登録リンク
+                      Align(
+                        alignment: Alignment.centerRight,
+                          child:TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const RegisterPage()),
+                          );
+                        },
+                        child: const Text('新規登録はこちら', style: TextStyle(fontSize: 16)),
+                      ),
+                      ),
+                      const SizedBox(height: 12),
+                      // デモログインボタン
                       OutlinedButton.icon(
                         onPressed: _demoLogin,
                         icon: const Icon(Icons.flash_on_outlined),
                         label: const Text('デモでログイン（ワンタップ）'),
-                        style: OutlinedButton.styleFrom(
+                        style: OutlinedButton.styleFrom( 
                           padding: const EdgeInsets.symmetric(
                               horizontal: 24, vertical: 14),
                           shape: RoundedRectangleBorder(
@@ -193,27 +226,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
-        ),
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-            backgroundColor:
-                const Color.fromARGB(255, 245, 45, 235), // ボタン色を変更可能
-            foregroundColor: Colors.white,
-            textStyle: const TextStyle(fontSize: 18),
-          ),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const RegisterPage()),
-            );
-          },
-          child: const Text('新規登録はこちら'),
         ),
       ),
     );

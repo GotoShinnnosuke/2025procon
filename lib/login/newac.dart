@@ -43,12 +43,12 @@ class _RegisterPageState extends State<RegisterPage> {
         builder: (_) => AlertDialog(
           title: const Text('登録内容確認'),
           content: Text('''
-名前: ${_nameController.text}
-メール: ${_emailController.text}
-年齢: ${_ageController.text}
-身長: ${_heightController.text} cm
-体重: ${_weightController.text} kg
-'''),
+            名前: ${_nameController.text}
+            メール: ${_emailController.text}
+            年齢: ${_ageController.text}
+            身長: ${_heightController.text} cm
+            体重: ${_weightController.text} kg
+            '''),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -126,6 +126,7 @@ class _RegisterPageState extends State<RegisterPage> {
     _heightController.dispose();
     _weightController.dispose();
     _passwordController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
@@ -148,26 +149,11 @@ class _RegisterPageState extends State<RegisterPage> {
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
-                      TextFormField(
-                        controller: _emailController,
-                        decoration: const InputDecoration(
-                          labelText: 'メールアドレス',
-                          prefixIcon: Icon(Icons.email),
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (value) {
-                          if (value == null || value.isEmpty)
-                            return 'メールアドレスを入力してください';
-                          if (!value.contains('@')) return '正しいメール形式を入力してください';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
+                      // 1. 名前(ID)
                       TextFormField(
                         controller: _nameController,
                         decoration: const InputDecoration(
-                          labelText: '名前(ID)',
+                          labelText: '名前',
                           prefixIcon: Icon(Icons.person),
                           border: OutlineInputBorder(),
                         ),
@@ -176,6 +162,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             : null,
                       ),
                       const SizedBox(height: 16),
+                      // 2. 年齢
                       TextFormField(
                         controller: _ageController,
                         decoration: const InputDecoration(
@@ -192,6 +179,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         },
                       ),
                       const SizedBox(height: 16),
+                      // 3. 身長 (cm)
                       TextFormField(
                         controller: _heightController,
                         decoration: const InputDecoration(
@@ -209,6 +197,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         },
                       ),
                       const SizedBox(height: 16),
+                      // 4. 体重 (kg)
                       TextFormField(
                         controller: _weightController,
                         decoration: const InputDecoration(
@@ -226,6 +215,24 @@ class _RegisterPageState extends State<RegisterPage> {
                         },
                       ),
                       const SizedBox(height: 16),
+                      // 5. メールアドレス
+                      TextFormField(
+                        controller: _emailController,
+                        decoration: const InputDecoration(
+                          labelText: 'メールアドレス',
+                          prefixIcon: Icon(Icons.email),
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.isEmpty)
+                            return 'メールアドレスを入力してください';
+                          if (!value.contains('@')) return '正しいメール形式を入力してください';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      // 6. パスワード
                       TextFormField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
@@ -248,28 +255,31 @@ class _RegisterPageState extends State<RegisterPage> {
                           return null;
                         },
                       ),
+                      
+                      // 7. 登録ボタン
+                      const SizedBox(height: 30),
+                      Center(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 14),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8)),
+                            backgroundColor: const Color.fromARGB(255, 63, 169, 132),
+                            foregroundColor: Colors.white,
+                            textStyle: const TextStyle(fontSize: 16),
+                            elevation: 2,
+                          ),
+                          onPressed: _submitForm, 
+                          child: const Text('登録'),
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16),
-        color: Colors.white,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-            backgroundColor: Colors.deepPurple,
-            foregroundColor: Colors.white,
-            textStyle: const TextStyle(fontSize: 18),
-          ),
-          onPressed: _submitForm,
-          child: const Text('登録'),
         ),
       ),
     );

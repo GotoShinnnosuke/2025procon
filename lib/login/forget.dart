@@ -106,7 +106,7 @@ class _ForgetPageState extends State<ForgetPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('パスワードを忘れた場合'),
+        title: const Text('パスワードをリセット'),
         centerTitle: true,
       ),
       body: Padding(
@@ -115,8 +115,7 @@ class _ForgetPageState extends State<ForgetPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              '登録したメールアドレスを入力してください。'
-              '\nパスワードリセット用のリンクを送信します。',
+              '登録したメールアドレスを入力してください。',
               style: TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 20),
@@ -132,7 +131,7 @@ class _ForgetPageState extends State<ForgetPage> {
             ElevatedButton(
               onPressed: _isLoading ? null : _sendResetLink,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepPurple,
+                backgroundColor: const Color.fromARGB(255, 63, 169, 132),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
                 shape: RoundedRectangleBorder(
@@ -142,7 +141,7 @@ class _ForgetPageState extends State<ForgetPage> {
               child: _isLoading
                   ? const CircularProgressIndicator(color: Colors.white)
                   : const Text(
-                      'リセットリンクを送信',
+                      '送信',
                       style: TextStyle(fontSize: 18, color: Colors.white),
                     ),
             ),
