@@ -34,6 +34,7 @@ class HistoryRepository {
         'notes': e.notes,
         'tips': e.tips,
         'steps': e.steps,
+        'imageUrl': e.imageUrl,
+        'videoUrl': e.videoUrl,
       };
 }
-
