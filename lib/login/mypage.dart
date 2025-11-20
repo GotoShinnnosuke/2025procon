@@ -167,36 +167,40 @@ class _MyPageState extends State<MyPage> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFF1F1),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 40, vertical: 16),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30)),
+                // 1. メールアドレスの変更リンク (TextButton / 右寄せ)
+                const SizedBox(height: 8), // 元のSizedBox(height: 16)をSizedBox(height: 8)に変更
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const Addresschange()),
+                    ),
+                    child: const Text(
+                      'メールアドレスの変更はこちら', // テキストをリンクらしく修正
+                      style: TextStyle(
+                        fontSize: 16, // フォントサイズを20から16に変更
+                      ),
+                    ),
                   ),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const Addresschange()),
-                  ),
-                  child:
-                      const Text('メールアドレスの変更', style: TextStyle(fontSize: 20)),
                 ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFF1F1),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 40, vertical: 16),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30)),
+
+                // 2. パスワードの変更リンク (TextButton / 右寄せ)
+                const SizedBox(height: 8), // 間隔をSizedBox(height: 8)に変更
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SecurityPage()),
+                    ),
+                    child: const Text(
+                      'パスワードの変更はこちら',
+                      style: TextStyle(
+                        fontSize: 16, // フォントサイズを20から16に変更
+                      ),
+                    ),
                   ),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SecurityPage()),
-                  ),
-                  child: const Text('パスワードの変更', style: TextStyle(fontSize: 20)),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
