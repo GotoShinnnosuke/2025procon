@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'fitnessDetail.dart';
 import 'models/training_menu.dart';
 import 'services/ai_service.dart';
@@ -123,14 +125,24 @@ class _HomePageState extends State<HomePage> {
     setState(() => _favorites = favs);
   }
 
-  Future<void> _loadDisplayName() async {
-    final prof = await AuthRepository().getProfile();
-    final name = (prof['name'] as String?)?.trim();
-    final email = (prof['email'] as String?)?.trim();
-    if (!mounted) return;
-    setState(() => _displayName =
-        (name != null && name.isNotEmpty) ? name : (email ?? 'ゲスト'));
-  }
+Future<void> _loadDisplayName() async {
+  final uid = FirebaseAuth.instance.currentUser?.uid;
+  if (uid == null) return;
+
+  final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+  final name = doc.data()?['name'] as String?;
+  final email = FirebaseAuth.instance.currentUser?.email;
+
+  final fallback = (email != null && email.isNotEmpty)
+      ? email.split('@').first
+      : 'ゲスト';
+
+  if (!mounted) return;
+  setState(() {
+    _displayName = (name != null && name.isNotEmpty) ? name : fallback;
+  });
+}
+
 
   Future<void> _addDemoExercise() async {
     final demo = ExerciseItem(
@@ -347,44 +359,6 @@ class _HomePageState extends State<HomePage> {
                             builder: (_) => FitnessDetailPage(exercise: ex),
                           ),
                         ).then((_) => _loadFavorites());
-                      },
-                    ),
-                ],
-              ),
-            const SizedBox(height: 24),
-            Text(
-              '前回のトレーニング',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1F2A37),
-                  ),
-            ),
-            const SizedBox(height: 12),
-            if (_lastExercises.isEmpty)
-              const Text(
-                'まだ前回のトレーニングはありません。検索して提案を生成しましょう。',
-                style: TextStyle(color: Color(0xFF6B7280)),
-              )
-            else
-              _ListCard(
-                children: [
-                  for (final ex in _lastExercises)
-                    _TrainingTile(
-                      color: const Color(0xFFE6F4FF),
-                      iconColor: const Color(0xFF39A3F2),
-                      icon: Icons.fitness_center,
-                      title: ex.name,
-                      subtitle1:
-                          'セット: ${ex.sets ?? '-'}  回数/秒数: ${ex.repsOrSeconds ?? '-'}',
-                      subtitle2:
-                          (ex.notes ?? '').isEmpty ? '—' : (ex.notes ?? ''),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => FitnessDetailPage(exercise: ex),
-                          ),
-                        );
                       },
                     ),
                 ],

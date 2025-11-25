@@ -13,6 +13,7 @@ import 'services/media_service.dart';
 import 'services/training_log.dart';
 import 'services/training_log_firestore.dart';
 
+/// トレーニング1種目のタイマー画面。
 class TrainingTimerPage extends StatefulWidget {
   const TrainingTimerPage({super.key, required this.item});
   final ExerciseItem item;
@@ -21,6 +22,7 @@ class TrainingTimerPage extends StatefulWidget {
   State<TrainingTimerPage> createState() => _TrainingTimerPageState();
 }
 
+/// タイマー画面の状態管理と保存処理を担う State。
 class _TrainingTimerPageState extends State<TrainingTimerPage> {
   late int totalSets;
   late int currentSet;
@@ -575,6 +577,7 @@ class _TrainingTimerPageState extends State<TrainingTimerPage> {
 
 // --- widgets --------------------------------------------------------------
 
+/// 上部に情報カードと画像/動画を並べるコンテナ。
 class _HeaderRow extends StatelessWidget {
   const _HeaderRow({required this.info, required this.media});
   final Widget info;
@@ -606,6 +609,7 @@ class _HeaderRow extends StatelessWidget {
   }
 }
 
+/// 残り時間を円形プログレスで表示するウィジェット。
 class _TimerCircle extends StatelessWidget {
   const _TimerCircle({
     required this.seconds,
@@ -646,6 +650,7 @@ class _TimerCircle extends StatelessWidget {
   }
 }
 
+/// フォーム動画を再生するカード。
 class _VideoPlayerCard extends StatelessWidget {
   const _VideoPlayerCard({required this.controller, required this.onTogglePlay});
   final VideoPlayerController controller;
@@ -696,6 +701,7 @@ class _VideoPlayerCard extends StatelessWidget {
   }
 }
 
+/// フォーム動画の読み込み中表示。
 class _VideoLoadingCard extends StatelessWidget {
   const _VideoLoadingCard();
 
@@ -720,6 +726,7 @@ class _VideoLoadingCard extends StatelessWidget {
   }
 }
 
+/// フォーム動画の読み込みエラー時バナー。
 class _VideoErrorBanner extends StatelessWidget {
   const _VideoErrorBanner({required this.message, required this.onRetry});
   final String message;
@@ -754,6 +761,7 @@ class _VideoErrorBanner extends StatelessWidget {
   }
 }
 
+/// 未ログイン時の注意バナー。
 class _LoginStatusBanner extends StatelessWidget {
   const _LoginStatusBanner();
 
