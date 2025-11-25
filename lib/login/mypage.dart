@@ -167,41 +167,6 @@ class _MyPageState extends State<MyPage> {
                     return null;
                   },
                 ),
-                // 1. メールアドレスの変更リンク (TextButton / 右寄せ)
-                const SizedBox(height: 8), // 元のSizedBox(height: 16)をSizedBox(height: 8)に変更
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const Addresschange()),
-                    ),
-                    child: const Text(
-                      'メールアドレスの変更はこちら', // テキストをリンクらしく修正
-                      style: TextStyle(
-                        fontSize: 16, // フォントサイズを20から16に変更
-                      ),
-                    ),
-                  ),
-                ),
-
-                // 2. パスワードの変更リンク (TextButton / 右寄せ)
-                const SizedBox(height: 8), // 間隔をSizedBox(height: 8)に変更
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const SecurityPage()),
-                    ),
-                    child: const Text(
-                      'パスワードの変更はこちら',
-                      style: TextStyle(
-                        fontSize: 16, // フォントサイズを20から16に変更
-                      ),
-                    ),
-                  ),
-                ),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -215,7 +180,7 @@ class _MyPageState extends State<MyPage> {
                   child: const Text('プロフィールを保存',
                       style: TextStyle(fontSize: 18, color: Colors.white)),
                 ),
-                const SizedBox(height: 20),
+                                const SizedBox(height: 20),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
@@ -232,6 +197,41 @@ class _MyPageState extends State<MyPage> {
                   },
                   child: const Text('ログアウト',
                       style: TextStyle(fontSize: 18, color: Colors.white)),
+                ),
+                //メアドの変更リンク
+                const SizedBox(height: 8), 
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const Addresschange()),
+                    ),
+                    child: const Text(
+                      'メールアドレスの変更はこちら',
+                      style: TextStyle(
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // 2. パスワードの変更リンク (TextButton / 右寄せ)
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SecurityPage()),
+                    ),
+                    child: const Text(
+                      'パスワードの変更はこちら',
+                      style: TextStyle(
+                        fontSize: 16, // フォントサイズを20から16に変更
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
