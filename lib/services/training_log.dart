@@ -13,6 +13,7 @@ class TrainingLog {
   final int? calories;
   final String? imageBase64;
   final String? imageUrl;
+  final String? loadLevel;
   final bool favoriteAtTime;
   final DateTime completedAt;
   final bool deleted;
@@ -29,6 +30,7 @@ class TrainingLog {
     this.calories,
     this.imageBase64,
     this.imageUrl,
+    this.loadLevel,
     this.favoriteAtTime = false,
     this.deleted = false,
   });
@@ -48,6 +50,7 @@ class TrainingLog {
       calories: item.calories,
       imageBase64: imageBase64,
       imageUrl: imageUrl ?? item.imageUrl,
+      loadLevel: item.loadLevel,
       favoriteAtTime: favorite,
       completedAt: DateTime.now(),
     );
@@ -64,6 +67,7 @@ class TrainingLog {
         'calories': calories,
         'imageBase64': imageBase64,
         'imageUrl': imageUrl,
+        'loadLevel': loadLevel,
         'favoriteAtTime': favoriteAtTime,
         'completedAt': completedAt.toIso8601String(),
         'deleted': deleted,
@@ -80,6 +84,7 @@ class TrainingLog {
         calories: j['calories'] is int ? j['calories'] as int : int.tryParse('${j['calories']}'),
         imageBase64: j['imageBase64']?.toString(),
         imageUrl: j['imageUrl']?.toString(),
+        loadLevel: j['loadLevel']?.toString(),
         favoriteAtTime: j['favoriteAtTime'] == true,
         completedAt: DateTime.tryParse(j['completedAt']?.toString() ?? '') ?? DateTime.now(),
         deleted: j['deleted'] == true,
@@ -129,6 +134,10 @@ class TrainingLogRepository {
           repsOrSeconds: logs[i].repsOrSeconds,
           rest: logs[i].rest,
           notes: logs[i].notes,
+          calories: logs[i].calories,
+          imageBase64: logs[i].imageBase64,
+          imageUrl: logs[i].imageUrl,
+          loadLevel: logs[i].loadLevel,
           favoriteAtTime: logs[i].favoriteAtTime,
           deleted: true,
         );

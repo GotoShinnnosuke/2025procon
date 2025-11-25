@@ -189,11 +189,13 @@ class _HomePageState extends State<HomePage> {
         '次の条件に合う具体的な種目のみのリストをJSONで返してください（フォーマット: {"exercises":[{name,sets,repsOrSeconds,rest,notes,calories,tips:[string],steps:[string]}]}）。器具は使用不可（自重のみ）。ダンベル/バーベル/マシン/ケトルベル/チューブ等は不可。各種目に推定消費カロリー(calories: 整数,kcal)を必ず含めてください。\n'
         '$hint\nユーザー入力: $input\n希望負荷: ${loadLabel}',
       );
-      setState(() => _exercises = exercises);
+      final updatedExercises =
+          exercises.map((e) => e.copyWith(loadLevel: loadLabel)).toList();
+      setState(() => _exercises = updatedExercises);
       // 履歴として保存
-      await HistoryRepository().saveLastExercises(exercises);
+      await HistoryRepository().saveLastExercises(updatedExercises);
       if (mounted) {
-        setState(() => _lastExercises = exercises);
+        setState(() => _lastExercises = updatedExercises);
       }
     } catch (e) {
       final msg =

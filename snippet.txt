@@ -1,0 +1,36 @@
+      ),
+    );
+  }
+
+  String _formatDurationText(int seconds) {
+    final minutes = seconds ~/ 60;
+    final secs = seconds % 60;
+    if (minutes > 0 && secs > 0) {
+      return '•ª•b';
+    } else if (minutes > 0) {
+      return '•ª';
+    } else {
+      return '•b';
+    }
+  }
+
+
+  }
+  );
+  }
+}
+
+
+  void _nextSet() {
+    if (currentSet < totalSets) {
+      setState(() {
+        currentSet += 1;
+        remaining = setSeconds;
+        running = false;
+      });
+    }
+  }
+
+  Future<String?> _uploadImageToStorage(Uint8List bytes, String uid, String logId) async {
+    try {
+      final ref = FirebaseStorage.instance

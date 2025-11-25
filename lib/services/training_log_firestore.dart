@@ -25,6 +25,7 @@ class TrainingLogFirestoreRepository {
       'calories': log.calories,
       'imageBase64': log.imageBase64,
       'imageUrl': log.imageUrl,
+      'loadLevel': log.loadLevel,
       'favoriteAtTime': log.favoriteAtTime,
       'completedAt': Timestamp.fromDate(log.completedAt),
       'deleted': log.deleted,

@@ -9,6 +9,7 @@ class ExerciseItem {
   final int? calories; // 推定消費カロリー（kcal）
   final String? imageUrl;
   final String? videoUrl;
+  final String? loadLevel;
 
   ExerciseItem({
     required this.name,
@@ -21,7 +22,36 @@ class ExerciseItem {
     this.calories,
     this.imageUrl,
     this.videoUrl,
+    this.loadLevel,
   });
+
+  ExerciseItem copyWith({
+    String? name,
+    int? sets,
+    String? repsOrSeconds,
+    String? rest,
+    String? notes,
+    List<String>? tips,
+    List<String>? steps,
+    int? calories,
+    String? imageUrl,
+    String? videoUrl,
+    String? loadLevel,
+  }) {
+    return ExerciseItem(
+      name: name ?? this.name,
+      sets: sets ?? this.sets,
+      repsOrSeconds: repsOrSeconds ?? this.repsOrSeconds,
+      rest: rest ?? this.rest,
+      notes: notes ?? this.notes,
+      tips: tips ?? this.tips,
+      steps: steps ?? this.steps,
+      calories: calories ?? this.calories,
+      imageUrl: imageUrl ?? this.imageUrl,
+      videoUrl: videoUrl ?? this.videoUrl,
+      loadLevel: loadLevel ?? this.loadLevel,
+    );
+  }
 
   factory ExerciseItem.fromJson(Map<String, dynamic> j) => ExerciseItem(
         name: j['name']?.toString() ?? '',
@@ -29,13 +59,16 @@ class ExerciseItem {
         repsOrSeconds: j['repsOrSeconds']?.toString(),
         rest: j['rest']?.toString(),
         notes: j['notes']?.toString(),
-        tips: (j['tips'] as List?)?.map((e) => e.toString()).toList() ?? const [],
-        steps: (j['steps'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+        tips:
+            (j['tips'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+        steps:
+            (j['steps'] as List?)?.map((e) => e.toString()).toList() ?? const [],
         calories: j['calories'] is int
             ? j['calories'] as int
             : int.tryParse('${j['calories']}'),
         imageUrl: j['imageUrl']?.toString(),
         videoUrl: j['videoUrl']?.toString(),
+        loadLevel: j['loadLevel']?.toString(),
       );
 }
 
