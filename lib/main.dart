@@ -40,10 +40,10 @@ class FitnessApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF5F7FA),
         fontFamily: null,
       ),
-      home: const _AuthGate(),
+      home: const LoginPage(),
       routes: {
         '/home': (_) => const HomePage(),
-        '/auth': (_) => const AuthLandingPage(),
+        '/auth': (_) => const LoginPage(),
         '/mypage': (_) => const MyPage(),
         '/calendar': (_) => const CalendarScreen(),
       },
@@ -69,7 +69,7 @@ class _AuthGateState extends State<_AuthGate> {
           );
         }
         final loggedIn = snap.data ?? false;
-        return loggedIn ? const HomePage() : const AuthLandingPage();
+        return loggedIn ? const HomePage() : const LoginPage();
       },
     );
   }
