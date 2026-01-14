@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../services/user_profile_repository.dart';
 import 'security.dart';
 import 'addresschange.dart';
+import '../share/share_button.dart';
+import '../share/share_templates.dart';
 
 class MyPage extends StatefulWidget {
   const MyPage({super.key});
@@ -232,6 +234,15 @@ class _MyPageState extends State<MyPage> {
                       ),
                     ),
                   ),
+                ),
+                // シェアボタン
+                const SizedBox(height: 20),
+                ShareButton(
+                  data: ShareTemplates.plain(
+                    message: 'マイページからX直行テスト',
+                    //URL追加予定
+                  ),
+                  xDirect: true,
                 ),
               ],
             ),
