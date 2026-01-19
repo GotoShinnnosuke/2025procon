@@ -196,24 +196,33 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       body: body,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (i) => setState(() => _currentIndex = i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'ホーム',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_today_outlined),
-            selectedIcon: Icon(Icons.calendar_today),
-            label: 'カレンダー',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'マイページ',
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ⭐ 広告風バナー
+          const FakeAdBanner(),
+
+          // ⭐ 既存のナビゲーションバー（そのまま）
+          NavigationBar(
+            selectedIndex: _currentIndex,
+            onDestinationSelected: (i) => setState(() => _currentIndex = i),
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home),
+                label: 'ホーム',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.calendar_today_outlined),
+                selectedIcon: Icon(Icons.calendar_today),
+                label: 'カレンダー',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.person_outline),
+                selectedIcon: Icon(Icons.person),
+                label: 'マイページ',
+              ),
+            ],
           ),
         ],
       ),
@@ -358,6 +367,69 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 24),
             SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class FakeAdBanner extends StatelessWidget {
+  const FakeAdBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      elevation: 4,
+      color: Colors.white,
+      child: InkWell(
+        onTap: () {
+          debugPrint('広告タップ');
+        },
+        child: Container(
+          height: 56, // AdMobバナーに近い高さ
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(color: Colors.grey.shade300),
+            ),
+          ),
+          child: Row(
+            children: [
+              // AD表示
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'AD',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black54,
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 10),
+
+              // 広告文
+              const Expanded(
+                child: Text(
+                  '筋トレをもっと効率的に！今すぐチェック',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+
+              const Icon(Icons.chevron_right, color: Colors.black54),
+            ],
+          ),
         ),
       ),
     );
