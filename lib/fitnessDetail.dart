@@ -23,11 +23,16 @@ class _FitnessDetailPageState extends State<FitnessDetailPage> {
       (widget.plan?.exercises.isNotEmpty == true
           ? widget.plan!.exercises.first
           : null);
-  Uint8List? _headerImage;
+  ImageProvider? _headerImage;
   bool _loadingImage = false;
   VideoPlayerController? _videoController;
   bool _loadingVideo = false;
   String? _videoError;
+
+  String _fixStorageUrl(String url) {
+    // Storage の REST URL は *.appspot.com が正。*.firebasestorage.app を使っていた場合は置換する。
+    return url.replaceFirst('.firebasestorage.app', '.appspot.com');
+  }
 
   @override
   void initState() {
@@ -36,20 +41,27 @@ class _FitnessDetailPageState extends State<FitnessDetailPage> {
     final ex = _targetExercise;
     final key = const String.fromEnvironment('OPENAI_API_KEY');
     if (ex != null) {
-      setState(() {
-        _loadingImage = true;
-      });
-      MediaService(apiKey: key)
-          .getExerciseImageDetailed(ex.name, view: 'side', size: 512)
-          .then((result) {
-        if (!mounted) return;
+      // 先に保存済みのURLがあればそれを使う
+      if (ex.imageUrl != null && ex.imageUrl!.isNotEmpty) {
+        _headerImage = NetworkImage(_fixStorageUrl(ex.imageUrl!));
+      }
+      // URLが無ければ生成する
+      if (_headerImage == null) {
         setState(() {
-          _loadingImage = false;
-          if (result.bytes != null && result.bytes!.isNotEmpty) {
-            _headerImage = result.bytes;
-          }
+          _loadingImage = true;
         });
-      });
+        MediaService(apiKey: key)
+            .getExerciseImageDetailed(ex.name, view: 'side', size: 512)
+            .then((result) {
+          if (!mounted) return;
+          setState(() {
+            _loadingImage = false;
+            if (result.bytes != null && result.bytes!.isNotEmpty) {
+              _headerImage = MemoryImage(result.bytes!);
+            }
+          });
+        });
+      }
       _loadVideo(ex);
     }
   }
@@ -65,12 +77,19 @@ class _FitnessDetailPageState extends State<FitnessDetailPage> {
   Future<void> _toggleFav() async {
     final ex = _targetExercise;
     if (ex == null) return;
-    final now = await FavoritesRepository().toggle(ex);
-    if (!mounted) return;
-    setState(() => _isFav = now);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(now ? 'お気に入りに追加しました' : 'お気に入りを解除しました')),
-    );
+    try {
+      final now = await FavoritesRepository().toggle(ex);
+      if (!mounted) return;
+      setState(() => _isFav = now);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(now ? 'お気に入りに追加しました' : 'お気に入りを解除しました')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
   }
 
   @override
@@ -288,7 +307,7 @@ class _Header extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback onFavorite;
   final bool isFavorite;
-  final Uint8List? backgroundImage;
+  final ImageProvider? backgroundImage;
   final bool loading;
 
   @override
@@ -312,7 +331,7 @@ class _Header extends StatelessWidget {
                     : null,
                 image: backgroundImage != null
                     ? DecorationImage(
-                        image: MemoryImage(backgroundImage!),
+                        image: backgroundImage!,
                         fit: BoxFit.cover,
                       )
                     : null,

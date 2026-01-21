@@ -13,6 +13,14 @@ class TrainingLogEntry {
   final String? imageUrl;
   final String? imageBase64;
   final String? loadLevel;
+  final String? planId;
+  final String entryType;
+  final String? planName;
+  final String? planSummary;
+  final String? planIntensity;
+  final String? planCaution;
+  final int? planMinutes;
+  final List<ExerciseItem> planExercises;
 
   const TrainingLogEntry({
     required this.id,
@@ -26,6 +34,14 @@ class TrainingLogEntry {
     this.imageUrl,
     this.imageBase64,
     this.loadLevel,
+    this.planId,
+    this.entryType = 'exercise',
+    this.planName,
+    this.planSummary,
+    this.planIntensity,
+    this.planCaution,
+    this.planMinutes,
+    this.planExercises = const [],
   });
 
   factory TrainingLogEntry.fromFirestore(
@@ -59,6 +75,32 @@ class TrainingLogEntry {
       imageUrl: data['imageUrl']?.toString(),
       imageBase64: data['imageBase64']?.toString(),
       loadLevel: data['loadLevel']?.toString(),
+      planId: data['planId']?.toString(),
+      entryType: data['entryType']?.toString() ?? 'exercise',
+      planName: data['planName']?.toString(),
+      planSummary: data['planSummary']?.toString(),
+      planIntensity: data['planIntensity']?.toString(),
+      planCaution: data['planCaution']?.toString(),
+      planMinutes: parseInt(data['planMinutes']),
+      planExercises: (data['planExercises'] as List?)
+              ?.map((e) => ExerciseItem.fromJson(Map<String, dynamic>.from(e)))
+              .toList() ??
+          const [],
+    );
+  }
+
+  bool get isPlan => entryType == 'plan';
+
+  bool get isPlanChild =>
+      entryType == 'exercise' && planId != null && planId!.isNotEmpty;
+
+  TrainingMenu toPlan() {
+    return TrainingMenu(
+      name: planName ?? exerciseName,
+      summary: planSummary,
+      intensity: planIntensity,
+      caution: planCaution,
+      exercises: planExercises,
     );
   }
 

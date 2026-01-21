@@ -70,6 +70,20 @@ class ExerciseItem {
         videoUrl: j['videoUrl']?.toString(),
         loadLevel: j['loadLevel']?.toString(),
       );
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'sets': sets,
+        'repsOrSeconds': repsOrSeconds,
+        'rest': rest,
+        'notes': notes,
+        'tips': tips,
+        'steps': steps,
+        'calories': calories,
+        'imageUrl': imageUrl,
+        'videoUrl': videoUrl,
+        'loadLevel': loadLevel,
+      };
 }
 
 class TrainingMenu {
@@ -107,5 +121,15 @@ class TrainingMenu {
             const [],
         caution: j['caution']?.toString(),
       );
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'durationWeeks': durationWeeks,
+        'daysPerWeek': daysPerWeek,
+        'intensity': intensity,
+        'summary': summary,
+        'exercises': exercises.map((e) => e.toJson()).toList(),
+        'caution': caution,
+      };
 }
 

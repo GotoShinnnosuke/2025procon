@@ -1,19 +1,21 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import 'firebase_options.dart';
 import 'fitnessDetail.dart';
+import 'plan_detail.dart';
 import 'models/training_menu.dart';
+import 'models/training_log_entry.dart';
 import 'services/ai_service.dart';
+import 'services/favorites.dart';
 import 'login/account.dart';
 import 'login/mypage.dart';
 import 'login/profire_view_page.dart';
 import 'login/auth.dart';
-import 'calender/calendar_screen.dart';
-import 'services/history.dart';
-import 'services/favorites.dart';
 import 'login/profile_notifier.dart';
+import 'calender/calendar_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,17 +24,18 @@ Future<void> main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
   } catch (_) {
-    // すでに初期化済みなど、起動継続に支障ない場合は握りつぶす
+    // すでに初期化済みなど、起動継続に支障ない場合は握りつぶす。
   }
   runApp(const FitnessApp());
 }
 
+/// アプリ全体のMaterialAppを構築するルートWidget。
 class FitnessApp extends StatelessWidget {
   const FitnessApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    const seed = Color(0xFF6750A4); // やや青みのあるパープル
+    const seed = Color(0xFF6750A4);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Fitness',
@@ -40,7 +43,6 @@ class FitnessApp extends StatelessWidget {
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: seed),
         scaffoldBackgroundColor: const Color(0xFFF5F7FA),
-        fontFamily: null,
       ),
       home: const LoginPage(),
       routes: {
@@ -53,12 +55,14 @@ class FitnessApp extends StatelessWidget {
   }
 }
 
+/// 起動時にログイン状態を判定して遷移先を決めるゲート。
 class _AuthGate extends StatefulWidget {
   const _AuthGate();
   @override
   State<_AuthGate> createState() => _AuthGateState();
 }
 
+/// ログイン有無でHomeかLoginを出し分けるState。
 class _AuthGateState extends State<_AuthGate> {
   @override
   Widget build(BuildContext context) {
@@ -77,6 +81,7 @@ class _AuthGateState extends State<_AuthGate> {
   }
 }
 
+/// ホームタブ／カレンダー／マイページを持つメイン画面。
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -84,83 +89,47 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
+enum TrainingGenerationMode {
+  exercises,
+  plans,
+}
+
+/// Homeページの状態管理（検索、AI提案、表示名など）。
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
   final _searchController = TextEditingController();
   bool _loading = false;
   String? _error;
   List<ExerciseItem> _exercises = [];
-  late final AIServiceBase _ai;
-  int _loadLevelIndex = 1; // 0:小,1:中,2:大
-  List<ExerciseItem> _lastExercises = [];
+  List<TrainingMenu> _plans = [];
   List<ExerciseItem> _favorites = [];
+  List<TrainingMenu> _favoritePlans = [];
+  late final AIServiceBase _ai;
+  int _loadLevelIndex = 1; // 0:低,1:中,2:高
   String _displayName = '';
   bool _listeningProfile = false;
+  TrainingGenerationMode _generationMode = TrainingGenerationMode.exercises;
+  int _planMinutes = 10;
+
+  bool get _hasGeneratedResults => _exercises.isNotEmpty || _plans.isNotEmpty;
+
+  String get _modeLabel =>
+      _generationMode == TrainingGenerationMode.exercises
+          ? '種目生成'
+          : 'プラン生成 (${_planMinutes}分)';
 
   @override
   void initState() {
     super.initState();
     final key = const String.fromEnvironment('OPENAI_API_KEY');
     _ai = OpenAIAIService(apiKey: key);
-    _loadLastExercises();
     _loadFavorites();
+    _loadFavoritePlans();
     _loadDisplayName();
     if (!_listeningProfile) {
       ProfileNotifier.instance.addListener(_loadDisplayName);
       _listeningProfile = true;
     }
-  }
-
-  Future<void> _loadLastExercises() async {
-    final repo = HistoryRepository();
-    final last = await repo.getLastExercises();
-    if (!mounted) return;
-    setState(() => _lastExercises = last);
-  }
-
-  Future<void> _loadFavorites() async {
-    final repo = FavoritesRepository();
-    final favs = await repo.getFavorites();
-    if (!mounted) return;
-    setState(() => _favorites = favs);
-  }
-
-Future<void> _loadDisplayName() async {
-  final uid = FirebaseAuth.instance.currentUser?.uid;
-  if (uid == null) return;
-
-  final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-  final name = doc.data()?['name'] as String?;
-  final email = FirebaseAuth.instance.currentUser?.email;
-
-  final fallback = (email != null && email.isNotEmpty)
-      ? email.split('@').first
-      : 'ゲスト';
-
-  if (!mounted) return;
-  setState(() {
-    _displayName = (name != null && name.isNotEmpty) ? name : fallback;
-  });
-}
-
-
-  Future<void> _addDemoExercise() async {
-    final demo = ExerciseItem(
-      name: 'テスト種目 (3秒×2セット)',
-      sets: 2,
-      repsOrSeconds: '3秒',
-      rest: '10秒',
-      notes: '動作確認用のテスト種目です',
-      tips: const ['カウントは声に出してもOK', 'フォームよりも動作確認を優先'],
-      steps: const ['姿勢を作る', '3秒キープ', 'リラックス'],
-    );
-    setState(() {
-      _loading = false;
-      _error = null;
-      _exercises = [demo];
-    });
-    await HistoryRepository().saveLastExercises([demo]);
-    if (mounted) setState(() => _lastExercises = [demo]);
   }
 
   @override
@@ -173,45 +142,198 @@ Future<void> _loadDisplayName() async {
     super.dispose();
   }
 
+  Future<void> _loadFavorites() async {
+    final repo = FavoritesRepository();
+    final favs = await repo.getFavorites();
+    if (!mounted) return;
+    setState(() => _favorites = favs);
+  }
+
+  Future<void> _loadFavoritePlans() async {
+    final repo = PlanFavoritesRepository();
+    final favs = await repo.getFavorites();
+    if (!mounted) return;
+    setState(() => _favoritePlans = favs);
+  }
+
+  Future<void> _loadDisplayName() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final name = doc.data()?['name'] as String?;
+    final email = FirebaseAuth.instance.currentUser?.email;
+
+    final fallback = (email != null && email.isNotEmpty)
+        ? email.split('@').first
+        : 'ゲスト';
+
+    if (!mounted) return;
+    setState(() {
+      _displayName = (name != null && name.isNotEmpty) ? name : fallback;
+    });
+  }
+
+  Future<void> _addDemoExercise() async {
+    if (_generationMode == TrainingGenerationMode.plans) {
+      final demoPlan = TrainingMenu(
+        name: '体幹＋下半身プラン',
+        durationWeeks: 4,
+        daysPerWeek: 3,
+        intensity: '中',
+        summary: '入力部位を中心に負荷を分散した${_planMinutes}分プラン。',
+        exercises: [
+          ExerciseItem(
+            name: 'スクワット',
+            sets: 3,
+            repsOrSeconds: '12回',
+            rest: '45秒',
+            notes: '膝が内側に入らないように。',
+          ),
+          ExerciseItem(
+            name: 'ヒップリフト',
+            sets: 3,
+            repsOrSeconds: '12回',
+            rest: '45秒',
+            notes: 'お尻を締めて上げる。',
+          ),
+          ExerciseItem(
+            name: 'プランク',
+            sets: 2,
+            repsOrSeconds: '30秒',
+            rest: '30秒',
+            notes: '腰を反らさない。',
+          ),
+        ],
+        caution: '痛みが出たら中止してください。',
+      );
+      setState(() {
+        _loading = false;
+        _error = null;
+        _plans = [demoPlan];
+        _exercises = [];
+      });
+      return;
+    }
+
+    final demo = ExerciseItem(
+      name: 'テスト種目 (3秒×2セット)',
+      sets: 2,
+      repsOrSeconds: '3秒',
+      rest: '10秒',
+      notes: '動作確認用のテスト種目です。',
+      tips: const ['カウントを声に出してもOK', 'フォームよりも動作確認を優先'],
+      steps: const ['姿勢を作る', '3秒キープ', 'リラックス'],
+    );
+    setState(() {
+      _loading = false;
+      _error = null;
+      _exercises = [demo];
+      _plans = [];
+    });
+  }
+
+  void _setGenerationMode(TrainingGenerationMode mode) {
+    if (_generationMode == mode) return;
+    setState(() {
+      _generationMode = mode;
+      _loading = false;
+      _error = null;
+      _exercises = [];
+      _plans = [];
+    });
+  }
+
+  void _showRegenNotice() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('条件が変更されました。再生成をおこなってください')),
+    );
+  }
+
+  void _setLoadLevel(int index) {
+    if (_loadLevelIndex == index) return;
+    final hadResults = _hasGeneratedResults;
+    setState(() => _loadLevelIndex = index);
+    if (hadResults) _showRegenNotice();
+  }
+
+  void _setPlanMinutes(int minutes) {
+    if (_planMinutes == minutes) return;
+    final hadResults = _hasGeneratedResults;
+    setState(() => _planMinutes = minutes);
+    if (hadResults) _showRegenNotice();
+  }
+
+  Stream<List<TrainingLogEntry>> _todayLogsStream(String uid) {
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day);
+    final end = start.add(const Duration(days: 1));
+    return FirebaseFirestore.instance
+        .collection('trainingLogs')
+        .where('userId', isEqualTo: uid)
+        .where('completedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+        .where('completedAt', isLessThan: Timestamp.fromDate(end))
+        .orderBy('completedAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => TrainingLogEntry.fromFirestore(doc.data(), doc.id))
+            .toList());
+  }
+
   Future<void> _onSearch() async {
     final input = _searchController.text.trim();
     if (input.isEmpty) {
       setState(() {
         _error = '条件を入力してください（目的、頻度、時間、器具など）';
         _exercises = [];
+        _plans = [];
       });
       return;
     }
-    final loadLabel = ['小', '中', '大'][_loadLevelIndex];
+    final loadLabel = ['低', '中', '高'][_loadLevelIndex];
     final loadHint = _loadLevelIndex == 0
-        ? '低強度（初心者・関節に優しい）'
+        ? '低強度（関節に優しい）'
         : _loadLevelIndex == 1
             ? '中強度（標準的な負荷）'
-            : '高強度（上級者向け・注意事項必須）';
+            : '高強度（上級者向け）';
     setState(() {
       _loading = true;
       _error = null;
       _exercises = [];
+      _plans = [];
     });
     try {
-      final hint =
-          '以下のユーザー入力と選択された負荷(${loadLabel}: ${loadHint})に合わせ、必ず各プランに具体的な種目(exercises)を含む3つの提案をJSONで作成してください。';
-      // 種目リストのみを生成
-      final exercises = await _ai.generateExercises(
-        '次の条件に合う具体的な種目のみのリストをJSONで返してください（フォーマット: {"exercises":[{name,sets,repsOrSeconds,rest,notes,calories,tips:[string],steps:[string]}]}）。器具は使用不可（自重のみ）。ダンベル/バーベル/マシン/ケトルベル/チューブ等は不可。各種目に推定消費カロリー(calories: 整数,kcal)を必ず含めてください。\n'
-        '$hint\nユーザー入力: $input\n希望負荷: ${loadLabel}',
-      );
-      final updatedExercises =
-          exercises.map((e) => e.copyWith(loadLevel: loadLabel)).toList();
-      setState(() => _exercises = updatedExercises);
-      // 履歴として保存
-      await HistoryRepository().saveLastExercises(updatedExercises);
-      if (mounted) {
-        setState(() => _lastExercises = updatedExercises);
+      if (_generationMode == TrainingGenerationMode.plans) {
+        final prompt =
+            '入力された部位を中心に鍛えられる、1回のトレーニングで完結するセットプランを3案作成してください。'
+            '所要時間は${_planMinutes}分を目安にしてください。'
+            '各プランは複数の種目(exercises)で構成し、1回のトレーニングとして完結する内容にしてください。'
+            '各種目のsteps/tips/notesには足・手の置き方、動作方向、姿勢、呼吸、よくあるNGを短文で具体的に書いてください。'
+            '週間/日数といった周期の説明は不要です。'
+            '負荷は ${loadLabel}（${loadHint}）を想定。'
+            'ユーザー入力: $input';
+        final plans = await _ai.generatePlans(prompt);
+        if (!mounted) return;
+        setState(() => _plans = plans);
+      } else {
+        final hint =
+            '以下の条件と負荷(${loadLabel}: ${loadHint})に合わせ、具体的な種目(exercises)を含む提案をJSONで作成してください。';
+        final exercises = await _ai.generateExercises(
+          '次の条件に合う具体的な種目のみのリストをJSONで返してください（フォーマット: {"exercises":[{name,sets,repsOrSeconds,rest,notes,calories,tips:[string],steps:[string]}]}）。器具は使用不可（自重のみ）。各種目に推定消費カロリー(calories: 整数,kcal)を必ず含めてください。\n'
+          'steps/tips/notesには足・手の置き方、動作方向、姿勢、呼吸、よくあるNGを短文で具体的に書いてください。\n'
+          '$hint\nユーザー入力: $input\n希望負荷: $loadLabel',
+        );
+        final updated =
+            exercises.map((e) => e.copyWith(loadLevel: loadLabel)).toList();
+        if (!mounted) return;
+        setState(() => _exercises = updated);
       }
     } catch (e) {
-      final msg =
-          e is AIServiceException ? e.message : '生成に失敗しました。しばらくして再試行してください。';
+      final msg = e is AIServiceException
+          ? e.message
+          : '生成に失敗しました。しばらくして再試行してください。';
+      if (!mounted) return;
       setState(() => _error = msg);
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -256,7 +378,6 @@ Future<void> _loadDisplayName() async {
   }
 
   Widget _buildHomeBody(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -266,103 +387,61 @@ Future<void> _loadDisplayName() async {
             if (_displayName.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  'こんにちは、$_displayName さん',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF111827),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'こんにちは、$_displayName さん',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF111827),
+                            ),
                       ),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE0E7FF),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        _modeLabel,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF4338CA),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             _HeaderCard(
               controller: _searchController,
               onSearch: _onSearch,
               loadLevelIndex: _loadLevelIndex,
-              onSelectLoad: (i) => setState(() => _loadLevelIndex = i),
+              onSelectLoad: _setLoadLevel,
               onAddDemo: _addDemoExercise,
+              mode: _generationMode,
+              onModeChanged: _setGenerationMode,
+              planMinutes: _planMinutes,
+              onPlanMinutesChanged: _setPlanMinutes,
             ),
             const SizedBox(height: 16),
-            if (_loading) ...[
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: CircularProgressIndicator(),
-                ),
-              ),
-            ] else if (_error != null) ...[
-              _ErrorBanner(message: _error!),
-              const SizedBox(height: 16),
-            ] else if (_exercises.isNotEmpty) ...[
-              Text(
-                'AI提案 種目リスト',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1F2A37),
-                    ),
-              ),
-              const SizedBox(height: 12),
-              _ListCard(
-                children: [
-                  for (final ex in _exercises)
-                    _TrainingTile(
-                      color: const Color(0xFFEFF8E7),
-                      iconColor: const Color(0xFF16A34A),
-                      icon: Icons.fitness_center,
-                      title: ex.name,
-                      subtitle1:
-                          'セット: ${ex.sets ?? '-'}  回数/秒数: ${ex.repsOrSeconds ?? '-'}',
-                      subtitle2:
-                          (ex.notes ?? '').isEmpty ? '—' : (ex.notes ?? ''),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => FitnessDetailPage(exercise: ex),
-                          ),
-                        ).then((_) => _loadFavorites());
-                      },
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
-            ],
-            Text(
-              'お気に入りのトレーニング',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1F2A37),
-                  ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _buildAiSection()),
+                const SizedBox(width: 16),
+                Expanded(child: _buildRightColumn()),
+              ],
             ),
-            const SizedBox(height: 12),
-            if (_favorites.isEmpty)
-              const Text(
-                'お気に入り登録された種目はまだありません。',
-                style: TextStyle(color: Color(0xFF6B7280)),
-              )
-            else
-              _ListCard(
-                children: [
-                  for (final ex in _favorites)
-                    _TrainingTile(
-                      color: const Color(0xFFE9E3FF),
-                      iconColor: const Color(0xFF6C63FF),
-                      icon: Icons.favorite,
-                      title: ex.name,
-                      subtitle1:
-                          'セット: ${ex.sets ?? '-'}  回数/秒数: ${ex.repsOrSeconds ?? '-'}',
-                      subtitle2:
-                          (ex.notes ?? '').isEmpty ? '—' : (ex.notes ?? ''),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => FitnessDetailPage(exercise: ex),
-                          ),
-                        ).then((_) => _loadFavorites());
-                      },
-                    ),
-                ],
-              ),
             const SizedBox(height: 24),
             SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
           ],
@@ -370,8 +449,269 @@ Future<void> _loadDisplayName() async {
       ),
     );
   }
+
+  Widget _buildAiSection() {
+    final isPlanMode = _generationMode == TrainingGenerationMode.plans;
+    final title = isPlanMode ? 'AI提案 トレーニングプラン' : 'AI提案 種目リスト';
+    final emptyMessage =
+        isPlanMode ? 'AIにトレーニングプランを生成させよう' : 'AIにトレーニングメニューを生成させよう';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1F2A37),
+              ),
+        ),
+        const SizedBox(height: 12),
+        if (_loading)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: CircularProgressIndicator(),
+            ),
+          )
+        else if (_error != null)
+          _ErrorBanner(message: _error!)
+        else if (isPlanMode ? _plans.isEmpty : _exercises.isEmpty)
+          _ListCard(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  emptyMessage,
+                  style: const TextStyle(color: Color(0xFF6B7280)),
+                ),
+              ),
+            ],
+          )
+        else
+          _ListCard(
+            children: isPlanMode
+                ? [
+                    for (final plan in _plans)
+                      _TrainingPlanTile(
+                        plan: plan,
+                        minutes: _planMinutes,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PlanDetailPage(
+                                plan: plan,
+                                minutes: _planMinutes,
+                              ),
+                            ),
+                          ).then((_) => _loadFavoritePlans());
+                        },
+                      ),
+                  ]
+                : [
+                    for (final ex in _exercises)
+                      _TrainingTile(
+                        color: const Color(0xFFEFF8E7),
+                        iconColor: const Color(0xFF16A34A),
+                        icon: Icons.fitness_center,
+                        title: ex.name,
+                        subtitle1:
+                            'セット: ${ex.sets ?? '-'}  回数/秒数: ${ex.repsOrSeconds ?? '-'}',
+                        subtitle2:
+                            (ex.notes ?? '').isEmpty ? ' ' : (ex.notes ?? ''),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => FitnessDetailPage(exercise: ex),
+                            ),
+                          ).then((_) => _loadFavorites());
+                        },
+                      ),
+                  ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildRightColumn() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTodayLogsSection(),
+        const SizedBox(height: 16),
+        _buildFavoritesSection(),
+        const SizedBox(height: 16),
+        _buildFavoritePlansSection(),
+      ],
+    );
+  }
+
+  Widget _buildFavoritesSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'お気に入りトレーニング',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1F2A37),
+              ),
+        ),
+        const SizedBox(height: 12),
+        if (_favorites.isEmpty)
+          const Text(
+            'お気に入り登録された種目はまだありません。',
+            style: TextStyle(color: Color(0xFF6B7280)),
+          )
+        else
+          _ListCard(
+            children: [
+              for (final ex in _favorites)
+                _TrainingTile(
+                  color: const Color(0xFFE9E3FF),
+                  iconColor: const Color(0xFF6C63FF),
+                  icon: Icons.favorite,
+                  title: ex.name,
+                  subtitle1:
+                      'セット: ${ex.sets ?? '-'}  回数/秒数: ${ex.repsOrSeconds ?? '-'}',
+                  subtitle2: (ex.notes ?? '').isEmpty ? ' ' : (ex.notes ?? ''),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => FitnessDetailPage(exercise: ex),
+                      ),
+                    ).then((_) => _loadFavorites());
+                  },
+                ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildFavoritePlansSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'お気に入りプラン',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1F2A37),
+              ),
+        ),
+        const SizedBox(height: 12),
+        if (_favoritePlans.isEmpty)
+          const Text(
+            'お気に入り登録されたプランはまだありません。',
+            style: TextStyle(color: Color(0xFF6B7280)),
+          )
+        else
+          _ListCard(
+            children: [
+              for (final plan in _favoritePlans)
+                _TrainingPlanTile(
+                  plan: plan,
+                  minutes: null,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PlanDetailPage(plan: plan),
+                      ),
+                    ).then((_) => _loadFavoritePlans());
+                  },
+                ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildTodayLogsSection() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return const SizedBox.shrink();
+
+    return StreamBuilder<List<TrainingLogEntry>>(
+      stream: _todayLogsStream(user.uid),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _ErrorBanner(message: '本日の履歴取得に失敗しました: ${snapshot.error}');
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final logs = snapshot.data!;
+        final visibleLogs = logs.where((log) => !log.isPlanChild).toList();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '本日のトレーニング履歴',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1F2A37),
+                  ),
+            ),
+            const SizedBox(height: 12),
+            if (visibleLogs.isEmpty)
+              const Text(
+                '本日行ったトレーニングはありません。',
+                style: TextStyle(color: Color(0xFF6B7280)),
+              )
+            else
+              _ListCard(
+                children: [
+                  for (final log in visibleLogs)
+                    if (log.isPlan)
+                      _TrainingPlanTile(
+                        plan: log.toPlan(),
+                        minutes: log.planMinutes,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PlanDetailPage(
+                                plan: log.toPlan(),
+                                minutes: log.planMinutes,
+                              ),
+                            ),
+                          );
+                        },
+                      )
+                    else
+                      _TrainingTile(
+                        color: const Color(0xFFE6F4FF),
+                        iconColor: const Color(0xFF39A3F2),
+                        icon: Icons.fitness_center,
+                        title: log.exerciseName,
+                        subtitle1:
+                            'セット: ${log.sets ?? '-'}  回数/秒数: ${log.repsOrSeconds ?? '-'}  負荷: ${log.loadLevel ?? '-'}',
+                        subtitle2:
+                            (log.notes ?? '').isEmpty ? ' ' : (log.notes ?? ''),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => FitnessDetailPage(
+                                exercise: log.toExerciseItem(),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                ],
+              ),
+          ],
+        );
+      },
+    );
+  }
 }
 
+/// 検索ボックスと負荷選択チップをまとめたカード。
 class _HeaderCard extends StatelessWidget {
   const _HeaderCard({
     required this.controller,
@@ -379,17 +719,26 @@ class _HeaderCard extends StatelessWidget {
     required this.loadLevelIndex,
     required this.onSelectLoad,
     required this.onAddDemo,
+    required this.mode,
+    required this.onModeChanged,
+    required this.planMinutes,
+    required this.onPlanMinutesChanged,
   });
 
   final TextEditingController controller;
   final VoidCallback onSearch;
-  final int loadLevelIndex; // 0:小,1:中,2:大
+  final int loadLevelIndex; // 0:低,1:中,2:高
   final ValueChanged<int> onSelectLoad;
   final VoidCallback onAddDemo;
+  final TrainingGenerationMode mode;
+  final ValueChanged<TrainingGenerationMode> onModeChanged;
+  final int planMinutes;
+  final ValueChanged<int> onPlanMinutesChanged;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final isPlanMode = mode == TrainingGenerationMode.plans;
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -456,11 +805,111 @@ class _HeaderCard extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
+              const Text(
+                'モード',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF374151),
+                ),
+              ),
+              const SizedBox(width: 12),
+              ToggleButtons(
+                isSelected: [
+                  mode == TrainingGenerationMode.exercises,
+                  mode == TrainingGenerationMode.plans,
+                ],
+                onPressed: (index) {
+                  onModeChanged(index == 0
+                      ? TrainingGenerationMode.exercises
+                      : TrainingGenerationMode.plans);
+                },
+                borderRadius: BorderRadius.circular(10),
+                selectedColor: Colors.white,
+                fillColor: Theme.of(context).colorScheme.primary,
+                constraints:
+                    const BoxConstraints(minHeight: 36, minWidth: 84),
+                children: const [
+                  Text('種目生成'),
+                  Text('プラン生成'),
+                ],
+              ),
+            ],
+          ),
+          if (isPlanMode) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                const Text(
+                  '時間',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF374151),
+                  ),
+                ),
+                _TimeChip(
+                  label: '5分',
+                  selected: planMinutes == 5,
+                  onTap: () => onPlanMinutesChanged(5),
+                ),
+                _TimeChip(
+                  label: '10分',
+                  selected: planMinutes == 10,
+                  onTap: () => onPlanMinutesChanged(10),
+                ),
+                _TimeChip(
+                  label: '20分',
+                  selected: planMinutes == 20,
+                  onTap: () => onPlanMinutesChanged(20),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Text(
+                '負荷',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF374151),
+                ),
+              ),
+              const SizedBox(width: 12),
+              _LoadChip(
+                label: '低',
+                selected: loadLevelIndex == 0,
+                color: const Color(0xFF10B981),
+                onTap: () => onSelectLoad(0),
+              ),
+              const SizedBox(width: 8),
+              _LoadChip(
+                label: '中',
+                selected: loadLevelIndex == 1,
+                color: const Color(0xFFF59E0B),
+                onTap: () => onSelectLoad(1),
+              ),
+              const SizedBox(width: 8),
+              _LoadChip(
+                label: '大',
+                selected: loadLevelIndex == 2,
+                color: const Color(0xFFEF4444),
+                onTap: () => onSelectLoad(2),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
               Expanded(
                 child: TextField(
                   controller: controller,
                   decoration: InputDecoration(
-                    hintText: '鍛えたい部位やトレーニング名を入力',
+                    hintText: isPlanMode
+                        ? '鍛えたい部位を入力（例: 胸・背中）'
+                        : '鍛えたい部位やトレーニング名を入力',
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 14,
@@ -520,37 +969,13 @@ class _HeaderCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              _LoadChip(
-                label: '負荷: 小',
-                selected: loadLevelIndex == 0,
-                color: const Color(0xFF10B981),
-                onTap: () => onSelectLoad(0),
-              ),
-              const SizedBox(width: 8),
-              _LoadChip(
-                label: '負荷: 中',
-                selected: loadLevelIndex == 1,
-                color: const Color(0xFFF59E0B),
-                onTap: () => onSelectLoad(1),
-              ),
-              const SizedBox(width: 8),
-              _LoadChip(
-                label: '負荷: 大',
-                selected: loadLevelIndex == 2,
-                color: const Color(0xFFEF4444),
-                onTap: () => onSelectLoad(2),
-              ),
-            ],
-          ),
         ],
       ),
     );
   }
 }
 
+/// 負荷レベル選択用の小さなチップ。
 class _LoadChip extends StatelessWidget {
   const _LoadChip({
     required this.label,
@@ -597,6 +1022,45 @@ class _LoadChip extends StatelessWidget {
   }
 }
 
+/// プラン時間選択用の小さなチップ。
+class _TimeChip extends StatelessWidget {
+  const _TimeChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? const Color(0xFF4338CA) : const Color(0xFF6B7280);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFE0E7FF) : const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+              color: selected ? const Color(0xFF6366F1) : const Color(0xFFE5E7EB)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 色を少し暗くする拡張メソッド。
 extension on Color {
   Color darken([double amount = .2]) {
     assert(amount >= 0 && amount <= 1);
@@ -606,6 +1070,7 @@ extension on Color {
   }
 }
 
+/// エラー内容を表示するバナー。
 class _ErrorBanner extends StatelessWidget {
   const _ErrorBanner({required this.message});
   final String message;
@@ -636,6 +1101,7 @@ class _ErrorBanner extends StatelessWidget {
   }
 }
 
+/// リストの外枠カード（区切り線付き）。
 class _ListCard extends StatelessWidget {
   const _ListCard({required this.children});
   final List<Widget> children;
@@ -661,6 +1127,121 @@ class _ListCard extends StatelessWidget {
   }
 }
 
+/// トレーニングプランの要約表示タイル。
+class _TrainingPlanTile extends StatelessWidget {
+  const _TrainingPlanTile({
+    required this.plan,
+    required this.minutes,
+    this.onTap,
+  });
+  final TrainingMenu plan;
+  final int? minutes;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final exercises = plan.exercises;
+    final preview = exercises.take(4).toList();
+    final extra = exercises.length - preview.length;
+    final summary = plan.summary ?? '';
+    final intensity = plan.intensity ?? '指定なし';
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              plan.name,
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                color: Color(0xFF111827),
+              ),
+            ),
+            if (summary.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                summary,
+                style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+              ),
+            ],
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                if (minutes != null) _PlanChip(label: '目安: ${minutes}分'),
+                _PlanChip(label: '負荷: $intensity'),
+                if (onTap != null) const _PlanChip(label: '詳細を見る'),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '種目',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF374151),
+              ),
+            ),
+            const SizedBox(height: 4),
+            for (final ex in preview)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  '・${ex.name} (${ex.sets ?? '-'}×${ex.repsOrSeconds ?? '-'})',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF4B5563)),
+                ),
+              ),
+            if (extra > 0)
+              Text(
+                '他${extra}件',
+                style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+              ),
+            if (plan.caution != null && plan.caution!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                '注意: ${plan.caution}',
+                style: const TextStyle(fontSize: 12, color: Color(0xFFB91C1C)),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// プラン情報の短いチップ表示。
+class _PlanChip extends StatelessWidget {
+  const _PlanChip({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12,
+          color: Color(0xFF374151),
+          fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+/// トレーニング種目の1行表示タイル。
 class _TrainingTile extends StatelessWidget {
   const _TrainingTile({
     required this.color,
@@ -680,7 +1261,7 @@ class _TrainingTile extends StatelessWidget {
   final String subtitle1;
   final String subtitle2;
   final VoidCallback? onTap;
-  final int? calories; // 想定消費カロリー（kcal）
+  final int? calories;
 
   @override
   Widget build(BuildContext context) {
@@ -747,78 +1328,6 @@ class _TrainingTile extends StatelessWidget {
       ),
       trailing: const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF)),
       onTap: onTap,
-    );
-  }
-}
-
-class _CategoryRow extends StatelessWidget {
-  const _CategoryRow({required this.categories});
-  final List<_CategoryItemData> categories;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        for (final c in categories)
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: _CategoryItem(data: c),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _CategoryItemData {
-  final String label;
-  final IconData icon;
-  final Color color;
-  const _CategoryItemData(this.label, this.icon, this.color);
-}
-
-class _CategoryItem extends StatelessWidget {
-  const _CategoryItem({required this.data});
-  final _CategoryItemData data;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () {},
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: data.color,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(data.icon, color: const Color(0xFF374151)),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              data.label,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF374151),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

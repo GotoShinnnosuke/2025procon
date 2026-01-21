@@ -26,6 +26,14 @@ class TrainingLogFirestoreRepository {
       'imageBase64': log.imageBase64,
       'imageUrl': log.imageUrl,
       'loadLevel': log.loadLevel,
+      'planId': log.planId,
+      'entryType': log.entryType,
+      'planName': log.planName,
+      'planSummary': log.planSummary,
+      'planIntensity': log.planIntensity,
+      'planCaution': log.planCaution,
+      'planMinutes': log.planMinutes,
+      'planExercises': log.planExercises.map((e) => e.toJson()).toList(),
       'favoriteAtTime': log.favoriteAtTime,
       'completedAt': Timestamp.fromDate(log.completedAt),
       'deleted': log.deleted,
@@ -64,6 +72,20 @@ class TrainingLogFirestoreRepository {
         imageBase64: j['imageBase64']?.toString(),
         imageUrl: j['imageUrl']?.toString(),
         favoriteAtTime: j['favoriteAtTime'] == true,
+        loadLevel: j['loadLevel']?.toString(),
+        planId: j['planId']?.toString(),
+        entryType: j['entryType']?.toString() ?? 'exercise',
+        planName: j['planName']?.toString(),
+        planSummary: j['planSummary']?.toString(),
+        planIntensity: j['planIntensity']?.toString(),
+        planCaution: j['planCaution']?.toString(),
+        planMinutes: j['planMinutes'] is int
+            ? j['planMinutes'] as int
+            : int.tryParse('${j['planMinutes']}'),
+        planExercises: (j['planExercises'] as List?)
+                ?.map((e) => ExerciseItem.fromJson(Map<String, dynamic>.from(e)))
+                .toList() ??
+            const [],
         completedAt: (j['completedAt'] is Timestamp)
             ? (j['completedAt'] as Timestamp).toDate()
             : DateTime.now(),

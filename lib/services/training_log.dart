@@ -14,6 +14,14 @@ class TrainingLog {
   final String? imageBase64;
   final String? imageUrl;
   final String? loadLevel;
+  final String? planId;
+  final String entryType;
+  final String? planName;
+  final String? planSummary;
+  final String? planIntensity;
+  final String? planCaution;
+  final int? planMinutes;
+  final List<ExerciseItem> planExercises;
   final bool favoriteAtTime;
   final DateTime completedAt;
   final bool deleted;
@@ -31,12 +39,25 @@ class TrainingLog {
     this.imageBase64,
     this.imageUrl,
     this.loadLevel,
+    this.planId,
+    this.entryType = 'exercise',
+    this.planName,
+    this.planSummary,
+    this.planIntensity,
+    this.planCaution,
+    this.planMinutes,
+    this.planExercises = const [],
     this.favoriteAtTime = false,
     this.deleted = false,
   });
 
   factory TrainingLog.fromExercise(ExerciseItem item,
-      {required bool favorite, String? userId, String? imageBase64, String? imageUrl, String? id}) {
+      {required bool favorite,
+      String? userId,
+      String? imageBase64,
+      String? imageUrl,
+      String? id,
+      String? planId}) {
     final ts = DateTime.now().millisecondsSinceEpoch;
     final generatedId = id ?? 'log_${ts}_${item.name}';
     return TrainingLog(
@@ -51,7 +72,27 @@ class TrainingLog {
       imageBase64: imageBase64,
       imageUrl: imageUrl ?? item.imageUrl,
       loadLevel: item.loadLevel,
+      planId: planId,
       favoriteAtTime: favorite,
+      completedAt: DateTime.now(),
+    );
+  }
+
+  factory TrainingLog.fromPlan(TrainingMenu plan,
+      {int? minutes, String? userId, String? id}) {
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final generatedId = id ?? 'plan_${ts}_${plan.name}';
+    return TrainingLog(
+      id: generatedId,
+      exerciseName: plan.name,
+      userId: userId,
+      entryType: 'plan',
+      planName: plan.name,
+      planSummary: plan.summary,
+      planIntensity: plan.intensity,
+      planCaution: plan.caution,
+      planMinutes: minutes,
+      planExercises: plan.exercises,
       completedAt: DateTime.now(),
     );
   }
@@ -68,6 +109,14 @@ class TrainingLog {
         'imageBase64': imageBase64,
         'imageUrl': imageUrl,
         'loadLevel': loadLevel,
+        'planId': planId,
+        'entryType': entryType,
+        'planName': planName,
+        'planSummary': planSummary,
+        'planIntensity': planIntensity,
+        'planCaution': planCaution,
+        'planMinutes': planMinutes,
+        'planExercises': planExercises.map((e) => e.toJson()).toList(),
         'favoriteAtTime': favoriteAtTime,
         'completedAt': completedAt.toIso8601String(),
         'deleted': deleted,
@@ -85,6 +134,19 @@ class TrainingLog {
         imageBase64: j['imageBase64']?.toString(),
         imageUrl: j['imageUrl']?.toString(),
         loadLevel: j['loadLevel']?.toString(),
+        planId: j['planId']?.toString(),
+        entryType: j['entryType']?.toString() ?? 'exercise',
+        planName: j['planName']?.toString(),
+        planSummary: j['planSummary']?.toString(),
+        planIntensity: j['planIntensity']?.toString(),
+        planCaution: j['planCaution']?.toString(),
+        planMinutes: j['planMinutes'] is int
+            ? j['planMinutes'] as int
+            : int.tryParse('${j['planMinutes']}'),
+        planExercises: (j['planExercises'] as List?)
+                ?.map((e) => ExerciseItem.fromJson(Map<String, dynamic>.from(e)))
+                .toList() ??
+            const [],
         favoriteAtTime: j['favoriteAtTime'] == true,
         completedAt: DateTime.tryParse(j['completedAt']?.toString() ?? '') ?? DateTime.now(),
         deleted: j['deleted'] == true,
@@ -138,6 +200,14 @@ class TrainingLogRepository {
           imageBase64: logs[i].imageBase64,
           imageUrl: logs[i].imageUrl,
           loadLevel: logs[i].loadLevel,
+          planId: logs[i].planId,
+          entryType: logs[i].entryType,
+          planName: logs[i].planName,
+          planSummary: logs[i].planSummary,
+          planIntensity: logs[i].planIntensity,
+          planCaution: logs[i].planCaution,
+          planMinutes: logs[i].planMinutes,
+          planExercises: logs[i].planExercises,
           favoriteAtTime: logs[i].favoriteAtTime,
           deleted: true,
         );

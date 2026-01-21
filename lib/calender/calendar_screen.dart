@@ -6,6 +6,7 @@ import 'package:table_calendar/table_calendar.dart';
 
 import '../models/training_log_entry.dart';
 import '../fitnessDetail.dart';
+import '../plan_detail.dart';
 import 'workout_detail_dialog.dart';
 
 class CalendarScreen extends StatefulWidget {
@@ -86,6 +87,8 @@ class CalendarScreenState extends State<CalendarScreen> {
           final logs = snapshot.data!;
           final selectedLogs =
               _selectedDay != null ? _logsForDay(logs, _selectedDay!) : [];
+          final visibleLogs =
+              selectedLogs.where((log) => !log.isPlanChild).toList();
           final stats = _weeklyStats(logs);
 
           return SingleChildScrollView(
@@ -222,10 +225,17 @@ class CalendarScreenState extends State<CalendarScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      if (selectedLogs.isEmpty)
+                      if (visibleLogs.isEmpty)
                         const Text('この日に記録されたトレーニングはありません。'),
-                      ...selectedLogs.map(
+                      ...visibleLogs.map(
                         (log) {
+                          final isPlan = log.isPlan;
+                          final title = isPlan
+                              ? '${log.planName ?? log.exerciseName} (プラン)'
+                              : log.exerciseName;
+                          final subtitle = isPlan
+                              ? '種目数: ${log.planExercises.length} | 負荷: ${log.planIntensity ?? '-'}'
+                              : 'セット: ${log.sets ?? '-'} | 回数/秒数: ${log.repsOrSeconds ?? '-'} | 負荷: ${log.loadLevel ?? '-'} | カロリー: ${log.calories ?? '-'}kcal';
                           return Card(
                             child: Padding(
                               padding: const EdgeInsets.all(12.0),
@@ -234,22 +244,26 @@ class CalendarScreenState extends State<CalendarScreen> {
                                 children: [
                                   ListTile(
                                     contentPadding: EdgeInsets.zero,
-                                    title: Text(log.exerciseName),
-                                    subtitle: Text(
-                                      'セット: ${log.sets ?? '-'} | 回数/秒数: ${log.repsOrSeconds ?? '-'} | 負荷: ${log.loadLevel ?? '-'} | カロリー: ${log.calories ?? '-'}kcal',
-                                      maxLines: 2,
-                                    ),
+                                    title: Text(title),
+                                    subtitle: Text(subtitle, maxLines: 2),
                                     trailing: const Icon(Icons.info_outline),
-                                    onTap: () =>
-                                        showWorkoutDetailDialog(context, log),
+                                    onTap: () {
+                                      if (isPlan) {
+                                        _navigateToPlanDetail(log);
+                                      } else {
+                                        showWorkoutDetailDialog(context, log);
+                                      }
+                                    },
                                   ),
                                   const SizedBox(height: 8),
                                   Align(
                                     alignment: Alignment.centerRight,
                                     child: ElevatedButton.icon(
-                                      onPressed: () => _navigateToDetail(log),
+                                      onPressed: () => isPlan
+                                          ? _navigateToPlanDetail(log)
+                                          : _navigateToDetail(log),
                                       icon: const Icon(Icons.play_arrow),
-                                      label: const Text('もう一度やる'),
+                                      label: Text(isPlan ? 'プランを開く' : 'もう一度やる'),
                                     ),
                                   ),
                                 ],
@@ -274,6 +288,18 @@ class CalendarScreenState extends State<CalendarScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => FitnessDetailPage(exercise: log.toExerciseItem()),
+      ),
+    );
+  }
+
+  void _navigateToPlanDetail(TrainingLogEntry log) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PlanDetailPage(
+          plan: log.toPlan(),
+          minutes: log.planMinutes,
+        ),
       ),
     );
   }
