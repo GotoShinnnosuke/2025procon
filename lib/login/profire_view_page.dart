@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'mypage.dart';
 import 'auth.dart';
+import '../banner/custom_banner.dart';
 import '../services/user_profile_repository.dart';
 
 class ProfileView extends StatefulWidget {
@@ -54,58 +55,107 @@ class _ProfileViewState extends State<ProfileView> {
         title: const Text('プロフィール'),
         centerTitle: true,
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadProfile,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            const SizedBox(height: 8),
-            Row(
+      body: Stack(
+        children: [
+          // 1. メインのスクロールコンテンツ
+          RefreshIndicator(
+            onRefresh: _loadProfile,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
               children: [
-                const CircleAvatar(
-                  radius: 34,
-                  child: Icon(Icons.person, size: 34),
+                const SizedBox(height: 8),
+                // ユーザー基本情報エリア
+                Row(
+                  children: [
+                    const CircleAvatar(
+                      radius: 34,
+                      child: Icon(Icons.person, size: 34),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(_name ?? '-',
+                              style: const TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 4),
+                          Text(_email ?? '-',
+                              style: const TextStyle(color: Color(0xFF6B7280))),
+                        ],
+                      ),
+                    ),
+                    // プロフィール編集ボタン（右上）
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const MyPage()),
+                        ).then((_) => _loadProfile());
+                      },
+                      child: const Text('プロフィールを編集'),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_name ?? '-',
-                          style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 4),
-                      Text(_email ?? '-',
-                          style: const TextStyle(color: Color(0xFF6B7280))),
-                    ],
+                const SizedBox(height: 16),
+                
+                // 各種ステータス表示
+                _infoTile('年齢', _age?.toString() ?? '-'),
+                _infoTile('身長', _height != null ? '${_height!.toStringAsFixed(1)} cm' : '-'),
+                _infoTile('体重', _weight != null ? '${_weight!.toStringAsFixed(1)} kg' : '-'),
+
+                // --- 修正ポイント：ログアウトボタンを体重タイルの下に配置 ---
+                const SizedBox(height: 30), // 体重タイルとの余白
+                Center(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white, // 文字色を白に指定
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 30,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30)),
+                    ),
+                    onPressed: () async {
+                      await AuthRepository().logout();
+                      if (!mounted) return;
+                      Navigator.pushNamedAndRemoveUntil(
+                          context, '/auth', (route) => false);
+                    },
+                    child: const Text(
+                      'ログアウト',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const MyPage()),
-                    ).then((_) => _loadProfile());
-                  },
-                  child: const Text('プロフィールを編集'),
-                ),
+                // ----------------------------------------------------
+
+                // 下部バナーに被らないようにするための大きな余白
+                const SizedBox(height: 140),
               ],
             ),
-            const SizedBox(height: 16),
-            _infoTile('年齢', _age?.toString() ?? '-'),
-            _infoTile('身長',
-                _height != null ? '${_height!.toStringAsFixed(1)} cm' : '-'),
-            _infoTile('体重',
-                _weight != null ? '${_weight!.toStringAsFixed(1)} kg' : '-'),
-            const SizedBox(height: 24),
-            const SizedBox(height: 8),
-            const SizedBox(height: 10),
-          ],
-        ),
+          ),
+
+          // 2. 下部の浮かせるバナー
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16,
+            child: CustomBanner(
+              title: "心のダンベル発売予定!!!",
+              onTap: () {
+                print("バナーがクリックされました");
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 
+  // タイル表示用の共通ウィジェット
   Widget _infoTile(String label, String value) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
