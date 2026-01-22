@@ -10,7 +10,7 @@ import 'models/training_menu.dart';
 import 'models/training_log_entry.dart';
 import 'services/ai_service.dart';
 import 'services/favorites.dart';
-import 'banner/custom_banner.dart';
+import 'banner/fake_ad_banner.dart';
 import 'login/account.dart';
 import 'login/mypage.dart';
 import 'login/profire_view_page.dart';
@@ -357,12 +357,7 @@ class _HomePageState extends State<HomePage> {
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CustomBanner(
-            title: '筋トレをもっと効率的に！今すぐチェック',
-            onTap: () {
-              debugPrint('広告タップ');
-            },
-          ),
+          const FakeAdBanner(),
           NavigationBar(
             selectedIndex: _currentIndex,
             onDestinationSelected: (i) => setState(() => _currentIndex = i),
