@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:fl_chart/fl_chart.dart'; // グラフ用
+import 'package:fl_chart/fl_chart.dart';
 import '../models/workout.dart';
-import 'workout_detail_dialog.dart'; // 詳細ダイアログ
+import 'workout_detail_dialog.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({Key? key}) : super(key: key);
@@ -15,236 +15,217 @@ class CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
-  // 仮の運動データ
+  // 🔹 Firebaseからのデータ読み込み用（現在は仮データ）
   final List<Workout> workouts = [
-    Workout(
-      name: 'ランニング',
-      date: DateTime(2025, 10, 27),
-      duration: 30,
-      calories: 250,
-    ),
-    Workout(
-      name: '筋トレ',
-      date: DateTime(2025, 10, 28),
-      duration: 45,
-      calories: 300,
-    ),
-    Workout(
-      name: 'ウォーキング',
-      date: DateTime(2025, 10, 29),
-      duration: 20,
-      calories: 150,
-    ),
+    Workout(name: 'ランニング', date: DateTime.now(), duration: 30, calories: 250),
+    Workout(name: '筋トレ', date: DateTime.now().subtract(const Duration(days: 1)), duration: 45, calories: 300),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // 🔹 起動時に「今日」を選択状態にする
+    _selectedDay = _focusedDay;
+  }
 
   List<Workout> _getWorkoutsForDay(DateTime day) {
     return workouts.where((w) => isSameDay(w.date, day)).toList();
   }
 
-  // 棒グラフ用データ（直近7日分）
-  List<Map<String, dynamic>> get _weeklyStats {
-    final today = DateTime.now();
-    final last7Days = List.generate(
-      7,
-      (i) => today.subtract(Duration(days: i)),
-    );
-
-    return last7Days
-        .map((day) {
-          final daily = _getWorkoutsForDay(day);
-          final totalDuration = daily.fold<int>(
-            0,
-            (sum, w) => sum + (w.duration ?? 0),
-          );
-          final totalCalories = daily.fold<int>(
-            0,
-            (sum, w) => sum + (w.calories ?? 0),
-          );
-          return {
-            'day': '${day.month}/${day.day}',
-            'duration': totalDuration,
-            'calories': totalCalories,
-          };
-        })
-        .toList()
-        .reversed
-        .toList();
+  // 指定された週の7日間データを取得
+  List<Map<String, dynamic>> _getWeeklyStats(int weekOffset) {
+    final now = DateTime.now();
+    return List.generate(7, (i) {
+      final day = DateTime(now.year, now.month, now.day)
+          .subtract(Duration(days: (weekOffset * 7) + (6 - i)));
+      final daily = _getWorkoutsForDay(day);
+      return {
+        'day': '${day.month}/${day.day}',
+        'duration': daily.fold<int>(0, (sum, w) => sum + (w.duration ?? 0)),
+        'calories': daily.fold<int>(0, (sum, w) => sum + (w.calories ?? 0)),
+      };
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final selectedWorkouts =
-        _selectedDay != null ? _getWorkoutsForDay(_selectedDay!) : [];
+    // 🔹 _selectedDay が初期値（今日）を持っているので、最初からリストが作成される
+    final List<Workout> selectedWorkouts = _selectedDay != null ? _getWorkoutsForDay(_selectedDay!) : [];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('カレンダー'), centerTitle: true),
+      appBar: AppBar(title: const Text('トレーニング記録'), centerTitle: true),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            const SizedBox(height: 12),
-
-            // 🔹 棒グラフエリア
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Column(
-                children: [
-                  SizedBox(
-                    height: 200,
-                    child: BarChart(
-                      BarChartData(
-                        borderData: FlBorderData(show: false),
-                        titlesData: FlTitlesData(
-                          leftTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                          topTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                          rightTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              reservedSize: 28,
-                              getTitlesWidget: (value, meta) {
-                                int index = value.toInt();
-                                if (index < 0 || index >= _weeklyStats.length)
-                                  return const SizedBox();
-                                return Text(
-                                  _weeklyStats[index]['day'],
-                                  style: const TextStyle(fontSize: 10),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        gridData: const FlGridData(show: false),
-                        barGroups: _weeklyStats.asMap().entries.map((entry) {
-                          int index = entry.key;
-                          final data = entry.value;
-                          return BarChartGroupData(
-                            x: index,
-                            barRods: [
-                              BarChartRodData(
-                                toY: data['duration'].toDouble(),
-                                color: Colors.deepPurple,
-                                width: 8,
-                              ),
-                              BarChartRodData(
-                                toY: (data['calories'] / 10).toDouble(),
-                                color: Colors.orangeAccent,
-                                width: 8,
-                              ),
-                            ],
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-                  // 🔹 凡例（紫＝運動時間、オレンジ＝消費カロリー）
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.square,
-                        color: Colors.deepPurple,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      const Text('運動時間（分）'),
-                      const SizedBox(width: 12),
-                      const Icon(
-                        Icons.square,
-                        color: Colors.orangeAccent,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      const Text('消費カロリー（kcal）'),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // 🔹 カレンダー
-            Card(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: TableCalendar(
-                firstDay: DateTime.utc(2020, 1, 1),
-                lastDay: DateTime.utc(2030, 12, 31),
-                focusedDay: _focusedDay,
-                selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                onDaySelected: (selectedDay, focusedDay) {
-                  setState(() {
-                    _selectedDay = selectedDay;
-                    _focusedDay = focusedDay;
-                  });
+            const SizedBox(height: 10),
+            // 1週間ごとのスライドグラフ
+            SizedBox(
+              height: 300, 
+              child: PageView.builder(
+                reverse: true,
+                itemCount: 5,
+                itemBuilder: (context, index) {
+                  final weeklyData = _getWeeklyStats(index);
+                  return _buildWeeklyChartCard(weeklyData, index == 0 ? "今週" : "$index週間前");
                 },
-                calendarStyle: const CalendarStyle(
-                  todayDecoration: BoxDecoration(
-                    color: Colors.orangeAccent,
-                    shape: BoxShape.circle,
-                  ),
-                  selectedDecoration: BoxDecoration(
-                    color: Colors.deepPurple,
-                    shape: BoxShape.circle,
-                  ),
-                  markersMaxCount: 1,
-                  markerDecoration: BoxDecoration(
-                    color: Colors.redAccent,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                eventLoader: (day) => _getWorkoutsForDay(day),
               ),
             ),
-
-            const SizedBox(height: 16),
-
-            // 🔹 選択した日の運動一覧
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _selectedDay == null
-                        ? '日付を選択してください'
-                        : '${_selectedDay!.month}/${_selectedDay!.day} の運動一覧',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (selectedWorkouts.isEmpty) const Text('この日に運動は登録されていません。'),
-                  ...selectedWorkouts.map(
-                    (workout) => Card(
-                      child: ListTile(
-                        title: Text(workout.name),
-                        subtitle: Text(
-                          '時間: ${workout.duration}分 | カロリー: ${workout.calories}kcal',
-                        ),
-                        trailing: const Icon(Icons.info_outline),
-                        onTap: () => showWorkoutDetailDialog(context, workout),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _buildLegend(),
+            const SizedBox(height: 20),
+            _buildCalendar(),
+            const SizedBox(height: 20),
+            // 🔹 ここに今日（または選択した日）のリストが出る
+            _buildWorkoutList(selectedWorkouts),
+            const SizedBox(height: 30),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildWeeklyChartCard(List<Map<String, dynamic>> stats, String title) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+      ),
+      child: Column(
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+          const SizedBox(height: 20),
+          Expanded(
+            child: BarChart(
+              BarChartData(
+                maxY: 120,
+                alignment: BarChartAlignment.spaceAround,
+                borderData: FlBorderData(show: false),
+                gridData: const FlGridData(show: false),
+                titlesData: FlTitlesData(
+                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 30,
+                      getTitlesWidget: (value, meta) {
+                        int i = value.toInt();
+                        if (i < 0 || i >= stats.length) return const SizedBox();
+                        return SideTitleWidget(
+                          axisSide: meta.axisSide,
+                          space: 8,
+                          child: Text(stats[i]['day'], style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                barGroups: stats.asMap().entries.map((entry) {
+                  return BarChartGroupData(
+                    x: entry.key,
+                    barRods: [
+                      BarChartRodData(
+                        toY: entry.value['duration'].toDouble(),
+                        color: const Color.fromARGB(255, 102, 198, 198),
+                        width: 18,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      BarChartRodData(
+                        toY: (entry.value['calories'] / 10).toDouble(),
+                        color: const Color.fromARGB(255, 103, 218, 139),
+                        width: 18,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalendar() {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      elevation: 0,
+      color: Colors.grey[100],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: TableCalendar<Workout>(
+        firstDay: DateTime.now().subtract(const Duration(days: 90)),
+        lastDay: DateTime.utc(2030, 12, 31),
+        focusedDay: _focusedDay,
+        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+        onDaySelected: (selected, focused) {
+          setState(() { 
+            _selectedDay = selected; 
+            _focusedDay = focused; 
+          });
+        },
+        eventLoader: (DateTime day) => _getWorkoutsForDay(day),
+        calendarStyle: const CalendarStyle(
+          todayDecoration: BoxDecoration(color: Colors.orangeAccent, shape: BoxShape.circle),
+          selectedDecoration: BoxDecoration(color: Colors.deepPurple, shape: BoxShape.circle),
+          markerDecoration: BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
+        ),
+        headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
+      ),
+    );
+  }
+
+  Widget _buildWorkoutList(List<Workout> selectedWorkouts) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _selectedDay == null 
+                ? '日付を選択してください' 
+                : isSameDay(_selectedDay, DateTime.now()) 
+                    ? '今日の運動' 
+                    : '${_selectedDay!.month}/${_selectedDay!.day} の運動',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          if (selectedWorkouts.isEmpty) 
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Text('運動の記録がありません', style: TextStyle(color: Colors.grey)),
+            )
+          else
+            ...selectedWorkouts.map((w) => Card(
+              elevation: 0,
+              color: Colors.grey[50],
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                leading: const Icon(Icons.fitness_center, color: Colors.deepPurpleAccent),
+                title: Text(w.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text('${w.duration}分 / ${w.calories}kcal'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => showWorkoutDetailDialog(context, w),
+              ),
+            )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLegend() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _dot(const Color.fromARGB(255, 102, 198, 198)), const Text(' 時間(分)', style: TextStyle(fontSize: 12)),
+        const SizedBox(width: 20),
+        _dot(const Color.fromARGB(255, 103, 218, 139)), const Text(' カロリー(10kcal)', style: TextStyle(fontSize: 12)),
+      ],
+    );
+  }
+
+  Widget _dot(Color c) => Container(width: 10, height: 10, decoration: BoxDecoration(color: c, shape: BoxShape.circle));
 }

@@ -10,7 +10,7 @@ void showWorkoutDetailDialog(BuildContext context, Workout workout) {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            const Icon(Icons.fitness_center, color: Colors.deepPurple),
+            const Icon(Icons.fitness_center, color: Color.fromARGB(255, 224, 142, 202)),
             const SizedBox(width: 8),
             Text('${workout.name} の詳細'),
           ],
@@ -25,7 +25,7 @@ void showWorkoutDetailDialog(BuildContext context, Workout workout) {
                 children: [
                   const Icon(
                     Icons.calendar_today,
-                    color: Colors.deepPurple,
+                    color: Color.fromARGB(255, 143, 249, 225),
                     size: 20,
                   ),
                   const SizedBox(width: 8),
@@ -38,7 +38,7 @@ void showWorkoutDetailDialog(BuildContext context, Workout workout) {
             const SizedBox(height: 12),
             Row(
               children: [
-                const Icon(Icons.timer, color: Colors.deepPurple, size: 20),
+                const Icon(Icons.timer, color: Color.fromARGB(255, 233, 91, 91), size: 20),
                 const SizedBox(width: 8),
                 Text(
                   workout.duration != null
@@ -54,7 +54,7 @@ void showWorkoutDetailDialog(BuildContext context, Workout workout) {
                 children: [
                   const Icon(
                     Icons.local_fire_department,
-                    color: Colors.orangeAccent,
+                    color: Color.fromARGB(255, 181, 248, 214),
                     size: 20,
                   ),
                   const SizedBox(width: 8),
@@ -71,7 +71,7 @@ void showWorkoutDetailDialog(BuildContext context, Workout workout) {
             onPressed: () => Navigator.pop(context),
             child: const Text(
               '閉じる',
-              style: TextStyle(color: Colors.deepPurple),
+              style: TextStyle(color: Color.fromARGB(255, 170, 141, 219)),
             ),
           ),
         ],
