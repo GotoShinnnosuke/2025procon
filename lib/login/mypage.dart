@@ -183,23 +183,6 @@ class _MyPageState extends State<MyPage> {
                       style: TextStyle(fontSize: 18, color: Colors.white)),
                 ),
                                 const SizedBox(height: 20),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 40, vertical: 16),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30)),
-                  ),
-                  onPressed: () async {
-                    await AuthRepository().logout();
-                    if (!mounted) return;
-                    Navigator.pushNamedAndRemoveUntil(
-                        context, '/auth', (route) => false);
-                  },
-                  child: const Text('ログアウト',
-                      style: TextStyle(fontSize: 18, color: Colors.white)),
-                ),
                 //メアドの変更リンク
                 const SizedBox(height: 8), 
                 Align(
