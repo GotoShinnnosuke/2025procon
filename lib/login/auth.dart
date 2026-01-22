@@ -10,6 +10,7 @@ class AuthRepository {
   static const _kUserId = 'user_id';
   static const _kEmail = 'email';
   static const _kPassword = 'password'; // 注意: デモ用途のみ
+  static const _kAvatarUrl = 'avatar_url';
 
   Future<bool> isLoggedIn() async {
     final sp = await SharedPreferences.getInstance();
@@ -30,6 +31,7 @@ class AuthRepository {
     required String userId,
     required String password,
     String? email,
+    String? avatarUrl,
   }) async {
     final sp = await SharedPreferences.getInstance();
     await sp.setString(_kName, name);
@@ -39,6 +41,7 @@ class AuthRepository {
     await sp.setString(_kUserId, userId);
     await sp.setString(_kPassword, password);
     if (email != null) await sp.setString(_kEmail, email);
+    if (avatarUrl != null) await sp.setString(_kAvatarUrl, avatarUrl);
     await sp.setBool(_kLoggedIn, true);
     ProfileNotifier.instance.changed();
   }
@@ -72,6 +75,7 @@ class AuthRepository {
       'weight': sp.getDouble(_kWeight),
       'userId': sp.getString(_kUserId),
       'email': sp.getString(_kEmail),
+      'avatarUrl': sp.getString(_kAvatarUrl),
     };
   }
 }

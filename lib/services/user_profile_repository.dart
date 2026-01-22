@@ -11,6 +11,7 @@ class UserProfileRepository {
     required int age,
     required double height,
     required double weight,
+    String? avatarUrl,
   }) async {
     await _col.doc(uid).set({
       'name': name,
@@ -18,6 +19,7 @@ class UserProfileRepository {
       'age': age,
       'height': height,
       'weight': weight,
+      if (avatarUrl != null) 'avatarUrl': avatarUrl,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
@@ -29,6 +31,7 @@ class UserProfileRepository {
     int? age,
     double? height,
     double? weight,
+    String? avatarUrl,
   }) async {
     final data = <String, dynamic>{
       if (name != null) 'name': name,
@@ -36,6 +39,7 @@ class UserProfileRepository {
       if (age != null) 'age': age,
       if (height != null) 'height': height,
       if (weight != null) 'weight': weight,
+      if (avatarUrl != null) 'avatarUrl': avatarUrl,
       'updatedAt': FieldValue.serverTimestamp(),
     };
     if (data.length == 1) return; // only updatedAt
