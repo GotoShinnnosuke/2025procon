@@ -1,25 +1,53 @@
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
-class CustomBanner extends StatelessWidget {
-  final String title;
-  final VoidCallback onTap;
-
+class CustomBanner extends StatefulWidget {
   const CustomBanner({
     super.key,
     required this.title,
     required this.onTap,
+    this.storagePath = 'banner/dambell/character_noukin.png',
   });
+
+  final String title;
+  final VoidCallback onTap;
+  final String storagePath;
+
+  @override
+  State<CustomBanner> createState() => _CustomBannerState();
+}
+
+class _CustomBannerState extends State<CustomBanner> {
+  late final Future<String?> _imageFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _imageFuture = _loadImageUrl();
+  }
+
+  Future<String?> _loadImageUrl() async {
+    try {
+      return await FirebaseStorage.instance
+          .ref()
+          .child(widget.storagePath)
+          .getDownloadURL();
+    } catch (e) {
+      debugPrint('CustomBanner: failed to load URL for ${widget.storagePath}: $e');
+      return null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 8),
         width: double.infinity,
-        height: 80, // 高さを固定
+        height: 80,
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1A1A), // 画像が切れても違和感がないよう、背景を黒（または画像に近い色）に
+          color: const Color(0xFF1A1A1A),
           borderRadius: BorderRadius.circular(15.0),
           boxShadow: [
             BoxShadow(
@@ -33,32 +61,41 @@ class CustomBanner extends StatelessWidget {
           borderRadius: BorderRadius.circular(15.0),
           child: Row(
             children: [
-              // --- 左側：キャラクター画像エリア ---
-              // 背景をオレンジにし、キャラクターの全身が収まるように設定
               Container(
-                width: 100, // キャラクター用に少し幅を広げる
+                width: 100,
                 height: double.infinity,
-                color: const Color(0xFFFFAB4C), // 最初のデザインのオレンジ色
-                child: Image.asset(
-                  'assets/images/character_noukin.png',
-                  fit: BoxFit.contain, // 画像を「枠内に収める」設定（はみ出さない）
-                  alignment: Alignment.center,
-                  errorBuilder: (context, error, stackTrace) => const Icon(
-                    Icons.image,
-                    color: Colors.white,
-                  ),
+                color: const Color(0xFFFFAB4C),
+                child: FutureBuilder<String?>(
+                  future: _imageFuture,
+                  builder: (context, snap) {
+                    if (snap.hasError) {
+                      debugPrint(
+                          'CustomBanner: future error for ${widget.storagePath}: ${snap.error}');
+                    }
+                    final url = snap.data;
+                    if (url == null || url.isEmpty) {
+                      return const Icon(Icons.image, color: Colors.white);
+                    }
+                    return Image.network(
+                      url,
+                      fit: BoxFit.contain,
+                      alignment: Alignment.center,
+                      errorBuilder: (context, error, stackTrace) {
+                        debugPrint('CustomBanner: image load failed: $error');
+                        return const Icon(Icons.image, color: Colors.white);
+                      },
+                    );
+                  },
                 ),
               ),
-
-              // --- 右側：テキストエリア ---
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  alignment: Alignment.centerLeft, // 文字を左寄せ（画像の横）
+                  alignment: Alignment.centerLeft,
                   child: Text(
-                    title,
+                    widget.title,
                     style: const TextStyle(
-                      color: Colors.white, // 黒背景に映える白文字
+                      color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),

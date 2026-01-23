@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'mypage.dart';
+import '../banner/custom_banner.dart';
 import 'auth.dart';
 import '../services/user_profile_repository.dart';
 
@@ -67,6 +68,7 @@ class _ProfileViewState extends State<ProfileView> {
           children: [
             const SizedBox(height: 8),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CircleAvatar(
                   radius: 34,
@@ -80,30 +82,44 @@ class _ProfileViewState extends State<ProfileView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_name ?? '-',
-                          style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.w800)),
+                      Text(
+                        _name ?? '-',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w800),
+                      ),
                       const SizedBox(height: 4),
-                      Text(_email ?? '-',
-                          style: const TextStyle(color: Color(0xFF6B7280))),
+                      Text(
+                        _email ?? '-',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Color(0xFF6B7280)),
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.push<bool>(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const MyPage()),
+                            ).then((saved) {
+                              _loadProfile();
+                              if (saved == true && mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text('プロフィールを保存しました')),
+                                );
+                              }
+                            });
+                          },
+                          child: const Text('プロフィールを編集'),
+                        ),
+                      ),
                     ],
                   ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push<bool>(
-                      context,
-                      MaterialPageRoute(builder: (context) => const MyPage()),
-                    ).then((saved) {
-                      _loadProfile();
-                      if (saved == true && mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('プロフィールを保存しました')),
-                        );
-                      }
-                    });
-                  },
-                  child: const Text('プロフィールを編集'),
                 ),
               ],
             ),
@@ -114,6 +130,14 @@ class _ProfileViewState extends State<ProfileView> {
             _infoTile('体重',
                 _weight != null ? '${_weight!.toStringAsFixed(1)} kg' : '-'),
             const SizedBox(height: 24),
+            CustomBanner(
+              title: '筋トレをもっと楽しく',
+              storagePath: 'banner/dambell/character_noukin.png',
+              onTap: () {
+                debugPrint('カスタムバナータップ');
+              },
+            ),
+            const SizedBox(height: 8),
             const _DumbbellAdBanner(),
             const SizedBox(height: 8),
             const SizedBox(height: 10),
@@ -155,7 +179,7 @@ class _DumbbellAdBanner extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
-          debugPrint('ダンベル広告タップ');
+          debugPrint('ヨガマット広告タップ');
         },
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -168,7 +192,7 @@ class _DumbbellAdBanner extends StatelessWidget {
                   color: const Color(0xFFF3F4F6),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.fitness_center,
+                child: const Icon(Icons.self_improvement,
                     color: Color(0xFF6B7280), size: 32),
               ),
               const SizedBox(width: 12),
@@ -177,14 +201,14 @@ class _DumbbellAdBanner extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: const [
                     Text(
-                      '自宅トレ用ダンベルセット',
+                      '自宅ヨガ用マット',
                       style:
                           TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
                     ),
                     SizedBox(height: 4),
                     Text(
-                      '省スペースで気軽に筋トレ。'
-                      '負荷調整が簡単で初心者にもおすすめ。',
+                      '滑りにくくクッション性も十分。'
+                      'ストレッチや体幹トレにおすすめ。',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
