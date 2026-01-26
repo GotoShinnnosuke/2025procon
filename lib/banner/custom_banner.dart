@@ -1,14 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_storage/firebase_storage.dart'; // 追加
+import 'package:cached_network_image/cached_network_image.dart'; // 追加
 
 class CustomBanner extends StatelessWidget {
   final String title;
   final VoidCallback onTap;
+  final String storagePath; // Storage内のパス（例: 'banners/character.png'）
 
   const CustomBanner({
     super.key,
     required this.title,
     required this.onTap,
+    this.storagePath = 'assets/images/character_noukin.png', // デフォルト値
   });
+
+  // StorageからURLを取得する関数
+  Future<String> _getImageUrl(String path) async {
+    return await FirebaseStorage.instance.ref().child(path).getDownloadURL();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,9 +26,9 @@ class CustomBanner extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 8),
         width: double.infinity,
-        height: 80, // 高さを固定
+        height: 80,
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1A1A), // 画像が切れても違和感がないよう、背景を黒（または画像に近い色）に
+          color: const Color(0xFF1A1A1A),
           borderRadius: BorderRadius.circular(15.0),
           boxShadow: [
             BoxShadow(
@@ -33,32 +42,39 @@ class CustomBanner extends StatelessWidget {
           borderRadius: BorderRadius.circular(15.0),
           child: Row(
             children: [
-              // --- 左側：キャラクター画像エリア ---
-              // 背景をオレンジにし、キャラクターの全身が収まるように設定
               Container(
-                width: 100, // キャラクター用に少し幅を広げる
+                width: 100,
                 height: double.infinity,
-                color: const Color(0xFFFFAB4C), // 最初のデザインのオレンジ色
-                child: Image.asset(
-                  'assets/images/character_noukin.png',
-                  fit: BoxFit.contain, // 画像を「枠内に収める」設定（はみ出さない）
-                  alignment: Alignment.center,
-                  errorBuilder: (context, error, stackTrace) => const Icon(
-                    Icons.image,
-                    color: Colors.white,
-                  ),
+                color: const Color(0xFFFFAB4C),
+                // --- 修正ポイント：FutureBuilderでURLを取得して表示 ---
+                child: FutureBuilder<String>(
+                  future: _getImageUrl(storagePath),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                    }
+                    if (snapshot.hasError || !snapshot.hasData) {
+                      return const Icon(Icons.error, color: Colors.white);
+                    }
+
+                    return CachedNetworkImage(
+                      imageUrl: snapshot.data!,
+                      fit: BoxFit.contain,
+                      alignment: Alignment.center,
+                      placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                      errorWidget: (context, url, error) => const Icon(Icons.error),
+                    );
+                  },
                 ),
               ),
-
-              // --- 右側：テキストエリア ---
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  alignment: Alignment.centerLeft, // 文字を左寄せ（画像の横）
+                  alignment: Alignment.centerLeft,
                   child: Text(
                     title,
                     style: const TextStyle(
-                      color: Colors.white, // 黒背景に映える白文字
+                      color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),

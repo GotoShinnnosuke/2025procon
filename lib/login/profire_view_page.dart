@@ -104,13 +104,12 @@ class _ProfileViewState extends State<ProfileView> {
                 _infoTile('身長', _height != null ? '${_height!.toStringAsFixed(1)} cm' : '-'),
                 _infoTile('体重', _weight != null ? '${_weight!.toStringAsFixed(1)} kg' : '-'),
 
-                // --- 修正ポイント：ログアウトボタンを体重タイルの下に配置 ---
-                const SizedBox(height: 30), // 体重タイルとの余白
+                const SizedBox(height: 30),
                 Center(
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
-                      foregroundColor: Colors.white, // 文字色を白に指定
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 30,
                         vertical: 12,
@@ -130,7 +129,6 @@ class _ProfileViewState extends State<ProfileView> {
                     ),
                   ),
                 ),
-                // ----------------------------------------------------
 
                 // 下部バナーに被らないようにするための大きな余白
                 const SizedBox(height: 140),
@@ -145,6 +143,8 @@ class _ProfileViewState extends State<ProfileView> {
             bottom: 16,
             child: CustomBanner(
               title: "心のダンベル発売予定!!!",
+              // --- ここでStorageのパスを指定！ ---
+              storagePath: 'banner/dambell/character_noukin.png', 
               onTap: () {
                 print("バナーがクリックされました");
               },
