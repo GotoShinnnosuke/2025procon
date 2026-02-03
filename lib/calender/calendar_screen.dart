@@ -36,26 +36,34 @@ class CalendarScreenState extends State<CalendarScreen> {
     return logs.where((log) => isSameDay(log.completedAt, day)).toList();
   }
 
-  List<Map<String, dynamic>> _weeklyStats(List<TrainingLogEntry> logs) {
-    final today = DateTime.now();
-    final last7Days =
-        List.generate(7, (index) => today.subtract(Duration(days: index)));
+  DateTime _dateOnly(DateTime day) => DateTime(day.year, day.month, day.day);
 
-    return last7Days
-        .map((day) {
-          final daily = _logsForDay(logs, day);
-          final totalSets = daily.fold<int>(0, (sum, log) => sum + (log.sets ?? 0));
-          final totalCalories =
-              daily.fold<int>(0, (sum, log) => sum + (log.calories ?? 0));
-          return {
-            'day': '${day.month}/${day.day}',
-            'sets': totalSets,
-            'calories': totalCalories,
-          };
-        })
-        .toList()
-        .reversed
-        .toList();
+  List<DateTime> _chartDays(DateTime? selectedDay) {
+    final today = _dateOnly(DateTime.now());
+    if (selectedDay == null) {
+      final start = today.subtract(const Duration(days: 30));
+      return List.generate(31, (i) => start.add(Duration(days: i)));
+    }
+    final center = _dateOnly(selectedDay);
+    final start = center.subtract(const Duration(days: 15));
+    return List.generate(31, (i) => start.add(Duration(days: i)));
+  }
+
+  List<Map<String, dynamic>> _chartStats(
+      List<TrainingLogEntry> logs, DateTime? selectedDay) {
+    final days = _chartDays(selectedDay);
+    return days.map((day) {
+      final daily = _logsForDay(logs, day);
+      final totalSets =
+          daily.fold<int>(0, (sum, log) => sum + (log.sets ?? 0));
+      final totalCalories =
+          daily.fold<int>(0, (sum, log) => sum + (log.calories ?? 0));
+      return {
+        'day': '${day.month}/${day.day}',
+        'sets': totalSets,
+        'calories': totalCalories,
+      };
+    }).toList();
   }
 
   @override
@@ -89,7 +97,7 @@ class CalendarScreenState extends State<CalendarScreen> {
               _selectedDay != null ? _logsForDay(logs, _selectedDay!) : [];
           final visibleLogs =
               selectedLogs.where((log) => !log.isPlanChild).toList();
-          final stats = _weeklyStats(logs);
+          final stats = _chartStats(logs, _selectedDay);
 
           return SingleChildScrollView(
             child: Column(
@@ -100,59 +108,88 @@ class CalendarScreenState extends State<CalendarScreen> {
                   child: Column(
                     children: [
                       SizedBox(
-                        height: 200,
-                        child: BarChart(
-                          BarChartData(
-                            borderData: FlBorderData(show: false),
-                            titlesData: FlTitlesData(
-                              leftTitles: const AxisTitles(
-                                sideTitles: SideTitles(showTitles: false),
-                              ),
-                              topTitles: const AxisTitles(
-                                sideTitles: SideTitles(showTitles: false),
-                              ),
-                              rightTitles: const AxisTitles(
-                                sideTitles: SideTitles(showTitles: false),
-                              ),
-                              bottomTitles: AxisTitles(
-                                sideTitles: SideTitles(
-                                  showTitles: true,
-                                  reservedSize: 28,
-                                  getTitlesWidget: (value, meta) {
-                                    final index = value.toInt();
-                                    if (index < 0 || index >= stats.length) {
-                                      return const SizedBox();
-                                    }
-                                    return Text(
-                                      stats[index]['day'] as String,
-                                      style: const TextStyle(fontSize: 10),
-                                    );
-                                  },
+                        height: 220,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            const barWidth = 10.0;
+                            const groupSpace = 12.0;
+                            final desiredWidth =
+                                stats.length * (barWidth * 2 + groupSpace);
+                            final chartWidth =
+                                desiredWidth < constraints.maxWidth
+                                    ? constraints.maxWidth
+                                    : desiredWidth;
+                            return SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: SizedBox(
+                                width: chartWidth,
+                                child: BarChart(
+                                  BarChartData(
+                                    borderData: FlBorderData(show: false),
+                                    groupsSpace: groupSpace,
+                                    titlesData: FlTitlesData(
+                                      leftTitles: const AxisTitles(
+                                        sideTitles:
+                                            SideTitles(showTitles: false),
+                                      ),
+                                      topTitles: const AxisTitles(
+                                        sideTitles:
+                                            SideTitles(showTitles: false),
+                                      ),
+                                      rightTitles: const AxisTitles(
+                                        sideTitles:
+                                            SideTitles(showTitles: false),
+                                      ),
+                                      bottomTitles: AxisTitles(
+                                        sideTitles: SideTitles(
+                                          showTitles: true,
+                                          reservedSize: 28,
+                                          interval: 1,
+                                          getTitlesWidget: (value, meta) {
+                                            final index = value.toInt();
+                                            if (index < 0 ||
+                                                index >= stats.length) {
+                                              return const SizedBox();
+                                            }
+                                            return Text(
+                                              stats[index]['day'] as String,
+                                              style:
+                                                  const TextStyle(fontSize: 10),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                    gridData:
+                                        const FlGridData(show: false),
+                                    barGroups:
+                                        stats.asMap().entries.map((entry) {
+                                      final index = entry.key;
+                                      final data = entry.value;
+                                      return BarChartGroupData(
+                                        x: index,
+                                        barRods: [
+                                          BarChartRodData(
+                                            toY: (data['sets'] as int)
+                                                .toDouble(),
+                                            color: Colors.deepPurple,
+                                            width: barWidth,
+                                          ),
+                                          BarChartRodData(
+                                            toY: ((data['calories'] as int) /
+                                                    10)
+                                                .toDouble(),
+                                            color: Colors.orangeAccent,
+                                            width: barWidth,
+                                          ),
+                                        ],
+                                      );
+                                    }).toList(),
+                                  ),
                                 ),
                               ),
-                            ),
-                            gridData: const FlGridData(show: false),
-                            barGroups: stats.asMap().entries.map((entry) {
-                              final index = entry.key;
-                              final data = entry.value;
-                              return BarChartGroupData(
-                                x: index,
-                                barRods: [
-                                  BarChartRodData(
-                                    toY: (data['sets'] as int).toDouble(),
-                                    color: Colors.deepPurple,
-                                    width: 8,
-                                  ),
-                                  BarChartRodData(
-                                    toY:
-                                        ((data['calories'] as int) / 10).toDouble(),
-                                    color: Colors.orangeAccent,
-                                    width: 8,
-                                  ),
-                                ],
-                              );
-                            }).toList(),
-                          ),
+                            );
+                          },
                         ),
                       ),
                       const SizedBox(height: 8),

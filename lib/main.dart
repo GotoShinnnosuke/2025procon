@@ -123,7 +123,11 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     final key = const String.fromEnvironment('OPENAI_API_KEY');
-    _ai = OpenAIAIService(apiKey: key);
+    _ai = OpenAIAIService(
+      apiKey: key,
+      menuFunctionUrl:
+          'https://us-central1-procoup-6a3f3.cloudfunctions.net/generateMenu',
+    );
     _loadFavorites();
     _loadFavoritePlans();
     _loadDisplayName();
