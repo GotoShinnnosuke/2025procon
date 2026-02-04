@@ -4,6 +4,7 @@ import 'models/training_menu.dart';
 import 'training_timer.dart';
 import 'services/favorites.dart';
 import 'services/media_service.dart';
+import 'services/function_endpoints.dart';
 import 'package:video_player/video_player.dart';
 
 class FitnessDetailPage extends StatefulWidget {
@@ -40,6 +41,8 @@ class _FitnessDetailPageState extends State<FitnessDetailPage> {
     _loadFav();
     final ex = _targetExercise;
     final key = const String.fromEnvironment('OPENAI_API_KEY');
+    final media =
+        MediaService(apiKey: key, imageFunctionUrl: kGenerateMenuFunctionUrl);
     if (ex != null) {
       // 先に保存済みのURLがあればそれを使う
       if (ex.imageUrl != null && ex.imageUrl!.isNotEmpty) {
@@ -50,7 +53,7 @@ class _FitnessDetailPageState extends State<FitnessDetailPage> {
         setState(() {
           _loadingImage = true;
         });
-        MediaService(apiKey: key)
+        media
             .getExerciseImageDetailed(ex.name, view: 'side', size: 512)
             .then((result) {
           if (!mounted) return;
@@ -100,7 +103,8 @@ class _FitnessDetailPageState extends State<FitnessDetailPage> {
 
   Future<void> _loadVideo(ExerciseItem exercise) async {
     final key = const String.fromEnvironment('OPENAI_API_KEY');
-    final media = MediaService(apiKey: key);
+    final media =
+        MediaService(apiKey: key, imageFunctionUrl: kGenerateMenuFunctionUrl);
     String? url = exercise.videoUrl?.trim();
     url = (url != null && url.isNotEmpty)
         ? url

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'models/training_menu.dart';
 import 'services/favorites.dart';
 import 'services/media_service.dart';
+import 'services/function_endpoints.dart';
 import 'services/training_log.dart';
 import 'services/training_log_firestore.dart';
 import 'training_timer.dart';
@@ -29,7 +30,8 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
   void initState() {
     super.initState();
     final key = const String.fromEnvironment('OPENAI_API_KEY');
-    _media = MediaService(apiKey: key);
+    _media =
+        MediaService(apiKey: key, imageFunctionUrl: kGenerateMenuFunctionUrl);
     _loadFavorite();
   }
 

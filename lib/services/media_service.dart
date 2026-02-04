@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class MediaResult {
   final Uint8List? bytes;
@@ -19,7 +20,8 @@ class MediaResult {
 class MediaService {
   final String apiKey;
   final String? baseUrl;
-  MediaService({required this.apiKey, this.baseUrl});
+  final String? imageFunctionUrl;
+  MediaService({required this.apiKey, this.baseUrl, this.imageFunctionUrl});
 
   static String _cacheKey(String name, String view, int size) =>
       'exercise_image_v1:${name.toLowerCase()}:$view:$size';
@@ -67,6 +69,16 @@ class MediaService {
       } catch (_) {
         storageUrl = null;
       }
+    }
+
+    if (imageFunctionUrl != null && imageFunctionUrl!.isNotEmpty) {
+      return _generateImageViaFunction(
+        exerciseName,
+        view: view,
+        size: size,
+        storageRef: storageRef,
+        cacheKey: key,
+      );
     }
 
     if (apiKey.isEmpty) {
@@ -189,6 +201,80 @@ class MediaService {
     final lower = input.toLowerCase();
     final cleaned = lower.replaceAll(RegExp(r'[^a-z0-9]+'), '_');
     return cleaned.replaceAll(RegExp(r'_+'), '_').replaceAll(RegExp(r'^_|_$'), '');
+  }
+
+  Future<MediaResult> _generateImageViaFunction(
+    String exerciseName, {
+    required String view,
+    required int size,
+    required Reference storageRef,
+    required String cacheKey,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const MediaResult(errorMessage: 'ログインが必要です。再ログインしてください。');
+    }
+    final idToken = await user.getIdToken();
+    final uri = Uri.parse(imageFunctionUrl!);
+
+    http.Response res;
+    try {
+      res = await http
+          .post(
+            uri,
+            headers: {
+              'Authorization': 'Bearer $idToken',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'mode': 'image',
+              'exerciseName': exerciseName,
+              'view': view,
+              'size': size,
+            }),
+          )
+          .timeout(const Duration(seconds: 45));
+    } catch (e) {
+      return MediaResult(errorMessage: 'ネットワークエラー: ${e.toString()}');
+    }
+
+    if (res.statusCode != 200) {
+      String? detail;
+      try {
+        final err = jsonDecode(res.body) as Map<String, dynamic>;
+        detail = err['error']?.toString();
+      } catch (_) {}
+      return MediaResult(
+        statusCode: res.statusCode,
+        errorMessage: '画像生成に失敗しました: HTTP ${res.statusCode} ${detail ?? ''}'.trim(),
+      );
+    }
+
+    try {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final b64 = data['b64_json'] as String?;
+      if (b64 == null || b64.isEmpty) {
+        return const MediaResult(errorMessage: '応答に画像データ（b64_json）が含まれていません');
+      }
+      final bytes = base64Decode(b64);
+      final sp = await SharedPreferences.getInstance();
+      await sp.setString(cacheKey, b64);
+      String? storageUrl;
+      try {
+        await storageRef.putData(bytes, SettableMetadata(contentType: 'image/png'));
+        storageUrl = await storageRef.getDownloadURL();
+      } catch (_) {
+        storageUrl = null;
+      }
+      return MediaResult(
+        bytes: bytes,
+        base64Data: b64,
+        downloadUrl: storageUrl,
+        statusCode: 200,
+      );
+    } catch (e) {
+      return MediaResult(errorMessage: '応答解析に失敗しました: ${e.toString()}');
+    }
   }
 
   /// Returns a download URL for a stored form video if available.

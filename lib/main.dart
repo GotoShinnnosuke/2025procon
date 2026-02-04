@@ -10,6 +10,7 @@ import 'models/training_menu.dart';
 import 'models/training_log_entry.dart';
 import 'services/ai_service.dart';
 import 'services/favorites.dart';
+import 'services/function_endpoints.dart';
 import 'banner/fake_ad_banner.dart';
 import 'login/account.dart';
 import 'login/mypage.dart';
@@ -125,8 +126,7 @@ class _HomePageState extends State<HomePage> {
     final key = const String.fromEnvironment('OPENAI_API_KEY');
     _ai = OpenAIAIService(
       apiKey: key,
-      menuFunctionUrl:
-          'https://us-central1-procoup-6a3f3.cloudfunctions.net/generateMenu',
+      menuFunctionUrl: kGenerateMenuFunctionUrl,
     );
     _loadFavorites();
     _loadFavoritePlans();

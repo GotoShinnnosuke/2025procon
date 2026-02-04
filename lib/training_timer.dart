@@ -10,6 +10,7 @@ import 'package:video_player/video_player.dart';
 import 'models/training_menu.dart';
 import 'services/favorites.dart';
 import 'services/media_service.dart';
+import 'services/function_endpoints.dart';
 import 'services/training_log.dart';
 import 'services/training_log_firestore.dart';
 
@@ -61,8 +62,7 @@ class _TrainingTimerPageState extends State<TrainingTimerPage> {
     _carouselController = PageController();
     _startCarouselAutoPlay();
 
-    final key = const String.fromEnvironment('OPENAI_API_KEY');
-    _imageFuture = MediaService(apiKey: key)
+    _imageFuture = _mediaService()
         .getExerciseImageDetailed(widget.item.name, view: 'side', size: 512);
     _imageFuture?.then((res) {
       if (!mounted) return;
@@ -220,8 +220,7 @@ class _TrainingTimerPageState extends State<TrainingTimerPage> {
   // --- media --------------------------------------------------------------
 
   Future<void> _loadVideoIfAvailable() async {
-    final key = const String.fromEnvironment('OPENAI_API_KEY');
-    final media = MediaService(apiKey: key);
+    final media = _mediaService();
     String? url = widget.item.videoUrl?.trim();
     url = (url != null && url.isNotEmpty)
         ? url
@@ -490,10 +489,9 @@ class _TrainingTimerPageState extends State<TrainingTimerPage> {
             alignment: Alignment.centerRight,
             child: OutlinedButton(
               onPressed: () {
-                final key = const String.fromEnvironment('OPENAI_API_KEY');
                 setState(() {
                   _imageFuture =
-                      MediaService(apiKey: key).getExerciseImageDetailed(
+                      _mediaService().getExerciseImageDetailed(
                     widget.item.name,
                     view: 'side',
                     size: 512,
@@ -513,6 +511,14 @@ class _TrainingTimerPageState extends State<TrainingTimerPage> {
           ),
         );
       },
+    );
+  }
+
+  MediaService _mediaService() {
+    final key = const String.fromEnvironment('OPENAI_API_KEY');
+    return MediaService(
+      apiKey: key,
+      imageFunctionUrl: kGenerateMenuFunctionUrl,
     );
   }
 

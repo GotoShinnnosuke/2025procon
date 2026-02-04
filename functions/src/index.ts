@@ -30,13 +30,9 @@ export const generateMenu = onRequest(
       return;
     }
 
-    const {prompt, mode} = req.body ?? {};
-    if (!prompt || typeof prompt !== "string") {
-      res.status(400).json({error: "prompt is required"});
-      return;
-    }
-
+    const {prompt, mode, exerciseName, view, size} = req.body ?? {};
     const isExerciseMode = mode === "exercise";
+    const isImageMode = mode === "image";
     const systemPrompt = isExerciseMode
       ? "You are a fitness coach. Return JSON only in Japanese. " +
         "Format: {\"exercises\":[{name,sets,repsOrSeconds,rest,notes," +
@@ -47,6 +43,62 @@ export const generateMenu = onRequest(
         "tips:[string],steps:[string]}],caution}] }";
 
     try {
+      if (isImageMode) {
+        if (!exerciseName || typeof exerciseName !== "string") {
+          res.status(400).json({error: "exerciseName is required"});
+          return;
+        }
+        const viewText = typeof view === "string" && view ? view : "front";
+        const sizeNum = typeof size === "number" ? size : 512;
+        const sizeParam = sizeNum <= 1024 ? "1024x1024" : "1536x1024";
+        const imagePrompt =
+          "Flat vector illustration of proper exercise form: " +
+          `"${exerciseName}", ${viewText} view. ` +
+          "Simple light background, gender-neutral, fully clothed, " +
+          "clear posture and joint angles, high contrast. " +
+          "No text, no watermark, non-photorealistic.";
+
+        const imgResp = await fetch(
+          "https://api.openai.com/v1/images/generations",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${openaiKey.value()}`,
+            },
+            body: JSON.stringify({
+              model: "gpt-image-1",
+              prompt: imagePrompt,
+              size: sizeParam,
+              response_format: "b64_json",
+            }),
+          },
+        );
+
+        const imgData = await imgResp.json();
+        if (!imgResp.ok) {
+          logger.error("OpenAI image error", imgData);
+          res.status(500).json({
+            error: "OpenAI image request failed",
+            data: imgData,
+          });
+          return;
+        }
+        const b64 = imgData?.data?.[0]?.b64_json;
+        if (!b64 || typeof b64 !== "string") {
+          logger.error("Image response missing b64_json", imgData);
+          res.status(500).json({error: "Image response missing b64_json"});
+          return;
+        }
+        res.json({b64_json: b64});
+        return;
+      }
+
+      if (!prompt || typeof prompt !== "string") {
+        res.status(400).json({error: "prompt is required"});
+        return;
+      }
+
       const resp = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
