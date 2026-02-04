@@ -121,6 +121,9 @@ class OpenAIAIService implements AIServiceBase {
 
   @override
   Future<List<ExerciseItem>> generateExercises(String userInput) async {
+    if (menuFunctionUrl != null && menuFunctionUrl!.isNotEmpty) {
+      return _generateExercisesViaFunction(userInput);
+    }
     if (apiKey.isEmpty) {
       throw AIServiceException(
         'APIキーが未設定です。--dart-define=OPENAI_API_KEY=... を指定してください。',
@@ -261,22 +264,93 @@ class OpenAIAIService implements AIServiceBase {
           statusCode: res.statusCode, detail: apiDetail);
     }
 
-    final data = jsonDecode(res.body) as Map<String, dynamic>;
-    final text = data['text'] as String?;
-    if (text == null || text.isEmpty) {
+    if (res.body.isEmpty) {
       throw AIServiceException('応答が空でした。条件を短く/具体的にして再試行してください。');
     }
-    Map<String, dynamic> jsonObj;
-    try {
-      jsonObj = jsonDecode(text) as Map<String, dynamic>;
-    } catch (e) {
-      throw AIServiceException('応答の解析に失敗しました。もう一度お試しください。',
-          detail: e.toString());
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    if (data['error'] != null) {
+      throw AIServiceException('メニュー生成に失敗しました。', detail: data['error'].toString());
     }
-    final List plans = (jsonObj['plans'] as List?) ?? const [];
+    List plans = const [];
+    if (data['plans'] is List) {
+      plans = data['plans'] as List;
+    } else {
+      final text = data['text'] as String?;
+      if (text == null || text.isEmpty) {
+        throw AIServiceException('応答が空でした。条件を短く/具体的にして再試行してください。');
+      }
+      Map<String, dynamic> jsonObj;
+      try {
+        jsonObj = jsonDecode(text) as Map<String, dynamic>;
+      } catch (e) {
+        throw AIServiceException(
+          '応答の解析に失敗しました。もう一度お試しください。',
+          detail: e.toString(),
+        );
+      }
+      plans = (jsonObj['plans'] as List?) ?? const [];
+    }
     return plans
         .take(3)
         .map((e) => TrainingMenu.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  Future<List<ExerciseItem>> _generateExercisesViaFunction(
+    String userInput,
+  ) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      throw AIServiceException('ログインが必要です。再ログインしてください。');
+    }
+    final idToken = await currentUser.getIdToken();
+    final uri = Uri.parse(menuFunctionUrl!);
+
+    http.Response res;
+    try {
+      res = await http
+          .post(
+            uri,
+            headers: {
+              'Authorization': 'Bearer $idToken',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({'prompt': userInput, 'mode': 'exercise'}),
+          )
+          .timeout(const Duration(seconds: 30));
+    } on TimeoutException {
+      throw AIServiceException('タイムアウトしました。通信環境を確認して再試行してください。');
+    } catch (e) {
+      throw AIServiceException('ネットワークエラーが発生しました。接続を確認してください。',
+          detail: e.toString());
+    }
+
+    if (res.statusCode != 200) {
+      String? apiDetail;
+      try {
+        final err = jsonDecode(res.body) as Map<String, dynamic>;
+        apiDetail = err['error']?.toString();
+      } catch (_) {}
+      throw AIServiceException('メニュー生成に失敗しました。',
+          statusCode: res.statusCode, detail: apiDetail);
+    }
+
+    if (res.body.isEmpty) {
+      throw AIServiceException('応答が空でした。条件を短く/具体的にして再試行してください。');
+    }
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    if (data['error'] != null) {
+      throw AIServiceException('メニュー生成に失敗しました。', detail: data['error'].toString());
+    }
+
+    List list = const [];
+    if (data['exercises'] is List) {
+      list = data['exercises'] as List;
+    } else {
+      throw AIServiceException('応答の解析に失敗しました。もう一度お試しください。');
+    }
+    return list
+        .map((e) => ExerciseItem.fromJson(Map<String, dynamic>.from(e)))
         .toList();
   }
 }

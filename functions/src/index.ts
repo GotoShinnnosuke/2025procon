@@ -30,11 +30,21 @@ export const generateMenu = onRequest(
       return;
     }
 
-    const {prompt} = req.body ?? {};
+    const {prompt, mode} = req.body ?? {};
     if (!prompt || typeof prompt !== "string") {
       res.status(400).json({error: "prompt is required"});
       return;
     }
+
+    const isExerciseMode = mode === "exercise";
+    const systemPrompt = isExerciseMode
+      ? "You are a fitness coach. Return JSON only in Japanese. " +
+        "Format: {\"exercises\":[{name,sets,repsOrSeconds,rest,notes," +
+        "tips:[string],steps:[string]}] }"
+      : "You are a fitness coach. Return JSON only in Japanese. " +
+        "Format: {\"plans\":[{name,durationWeeks,daysPerWeek,intensity," +
+        "summary,exercises:[{name,sets,repsOrSeconds,rest,notes," +
+        "tips:[string],steps:[string]}],caution}] }";
 
     try {
       const resp = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -48,14 +58,12 @@ export const generateMenu = onRequest(
           messages: [
             {
               role: "system",
-              content: [
-                "You are a fitness coach.",
-                "Return a short workout menu in Japanese.",
-              ].join(" "),
+              content: systemPrompt,
             },
             {role: "user", content: prompt},
           ],
           temperature: 0.7,
+          response_format: {type: "json_object"},
         }),
       });
 
@@ -71,7 +79,13 @@ export const generateMenu = onRequest(
       }
 
       const text = data?.choices?.[0]?.message?.content ?? "";
-      res.json({text});
+      try {
+        const jsonObj = JSON.parse(text);
+        res.json(jsonObj);
+      } catch (e) {
+        logger.error("JSON parse failed", {text});
+        res.status(500).json({error: "Invalid JSON from model"});
+      }
       return;
     } catch (e) {
       logger.error("Server error", e);
