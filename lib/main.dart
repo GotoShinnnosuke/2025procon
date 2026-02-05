@@ -179,65 +179,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  Future<void> _addDemoExercise() async {
-    if (_generationMode == TrainingGenerationMode.plans) {
-      final demoPlan = TrainingMenu(
-        name: '体幹＋下半身プラン',
-        durationWeeks: 4,
-        daysPerWeek: 3,
-        intensity: '中',
-        summary: '入力部位を中心に負荷を分散した${_planMinutes}分プラン。',
-        exercises: [
-          ExerciseItem(
-            name: 'スクワット',
-            sets: 3,
-            repsOrSeconds: '12回',
-            rest: '45秒',
-            notes: '膝が内側に入らないように。',
-          ),
-          ExerciseItem(
-            name: 'ヒップリフト',
-            sets: 3,
-            repsOrSeconds: '12回',
-            rest: '45秒',
-            notes: 'お尻を締めて上げる。',
-          ),
-          ExerciseItem(
-            name: 'プランク',
-            sets: 2,
-            repsOrSeconds: '30秒',
-            rest: '30秒',
-            notes: '腰を反らさない。',
-          ),
-        ],
-        caution: '痛みが出たら中止してください。',
-      );
-      setState(() {
-        _loading = false;
-        _error = null;
-        _plans = [demoPlan];
-        _exercises = [];
-      });
-      return;
-    }
-
-    final demo = ExerciseItem(
-      name: 'テスト種目 (3秒×2セット)',
-      sets: 2,
-      repsOrSeconds: '3秒',
-      rest: '10秒',
-      notes: '動作確認用のテスト種目です。',
-      tips: const ['カウントを声に出してもOK', 'フォームよりも動作確認を優先'],
-      steps: const ['姿勢を作る', '3秒キープ', 'リラックス'],
-    );
-    setState(() {
-      _loading = false;
-      _error = null;
-      _exercises = [demo];
-      _plans = [];
-    });
-  }
-
   void _setGenerationMode(TrainingGenerationMode mode) {
     if (_generationMode == mode) return;
     setState(() {
@@ -438,7 +379,6 @@ class _HomePageState extends State<HomePage> {
               onSearch: _onSearch,
               loadLevelIndex: _loadLevelIndex,
               onSelectLoad: _setLoadLevel,
-              onAddDemo: _addDemoExercise,
               mode: _generationMode,
               onModeChanged: _setGenerationMode,
               planMinutes: _planMinutes,
@@ -729,7 +669,6 @@ class _HeaderCard extends StatelessWidget {
     required this.onSearch,
     required this.loadLevelIndex,
     required this.onSelectLoad,
-    required this.onAddDemo,
     required this.mode,
     required this.onModeChanged,
     required this.planMinutes,
@@ -740,7 +679,6 @@ class _HeaderCard extends StatelessWidget {
   final VoidCallback onSearch;
   final int loadLevelIndex; // 0:低,1:中,2:高
   final ValueChanged<int> onSelectLoad;
-  final VoidCallback onAddDemo;
   final TrainingGenerationMode mode;
   final ValueChanged<TrainingGenerationMode> onModeChanged;
   final int planMinutes;
@@ -961,21 +899,6 @@ class _HeaderCard extends StatelessWidget {
                   onPressed: onSearch,
                   icon: const Icon(Icons.search, size: 18),
                   label: const Text('検索'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                height: 44,
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: onAddDemo,
-                  icon: const Icon(Icons.flash_on_outlined, size: 18),
-                  label: const Text('デモ'),
                 ),
               ),
             ],
@@ -1342,3 +1265,4 @@ class _TrainingTile extends StatelessWidget {
     );
   }
 }
+

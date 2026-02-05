@@ -9,7 +9,7 @@ class AuthRepository {
   static const _kWeight = 'weight';
   static const _kUserId = 'user_id';
   static const _kEmail = 'email';
-  static const _kPassword = 'password'; // 注意: デモ用途のみ
+  static const _kPassword = 'password';
   static const _kAvatarUrl = 'avatar_url';
 
   Future<bool> isLoggedIn() async {
