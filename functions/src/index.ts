@@ -70,7 +70,6 @@ export const generateMenu = onRequest(
               model: "gpt-image-1",
               prompt: imagePrompt,
               size: sizeParam,
-              response_format: "b64_json",
             }),
           },
         );
