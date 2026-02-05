@@ -188,7 +188,12 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(plan.name),
+        title: const Text('トレーニングメニュー'),
+        leadingWidth: 120,
+        leading: TextButton(
+          onPressed: () => Navigator.of(context).maybePop(),
+          child: const Text('前の画面へ'),
+        ),
         actions: [
           IconButton(
             onPressed: _toggleFavorite,
