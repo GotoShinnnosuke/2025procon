@@ -58,7 +58,11 @@ class MediaService {
         if (imgRes.statusCode == 200) {
           final bytes = imgRes.bodyBytes;
           final b64 = base64Encode(bytes);
-          await sp.setString(key, b64);
+          try {
+            await sp.setString(key, b64);
+          } catch (e) {
+            debugPrint('MediaService: cache write failed: $e');
+          }
           return MediaResult(
             bytes: bytes,
             base64Data: b64,
@@ -168,7 +172,11 @@ class MediaService {
         return const MediaResult(errorMessage: '応答に画像データ（b64_json/url）が含まれていません');
       }
       if (b64 != null) {
-        await sp.setString(key, b64);
+        try {
+          await sp.setString(key, b64);
+        } catch (e) {
+          debugPrint('MediaService: cache write failed: $e');
+        }
       }
       try {
         await storageRef.putData(bytes, SettableMetadata(contentType: 'image/png'));
@@ -258,7 +266,11 @@ class MediaService {
       }
       final bytes = base64Decode(b64);
       final sp = await SharedPreferences.getInstance();
-      await sp.setString(cacheKey, b64);
+      try {
+        await sp.setString(cacheKey, b64);
+      } catch (e) {
+        debugPrint('MediaService: cache write failed: $e');
+      }
       String? storageUrl;
       try {
         await storageRef.putData(bytes, SettableMetadata(contentType: 'image/png'));
