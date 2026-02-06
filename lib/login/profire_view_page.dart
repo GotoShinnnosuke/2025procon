@@ -20,6 +20,7 @@ class _ProfileViewState extends State<ProfileView> {
   double? _height;
   double? _weight;
   String? _avatarUrl;
+  bool _showWeight = false;
 
   @override
   void dispose() {
@@ -127,8 +128,7 @@ class _ProfileViewState extends State<ProfileView> {
             _infoTile('年齢', _age?.toString() ?? '-'),
             _infoTile('身長',
                 _height != null ? '${_height!.toStringAsFixed(1)} cm' : '-'),
-            _infoTile('体重',
-                _weight != null ? '${_weight!.toStringAsFixed(1)} kg' : '-'),
+            _weightTile(),
             const SizedBox(height: 24),
             CustomBanner(
               title: '筋トレをもっと楽しく',
@@ -161,6 +161,36 @@ class _ProfileViewState extends State<ProfileView> {
         children: [
           Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
           Text(value, style: const TextStyle(color: Color(0xFF374151))),
+        ],
+      ),
+    );
+  }
+
+  Widget _weightTile() {
+    final value = _weight != null ? '${_weight!.toStringAsFixed(1)} kg' : '-';
+    final display = _showWeight ? value : '非表示';
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text('体重', style: TextStyle(fontWeight: FontWeight.w700)),
+          Row(
+            children: [
+              Text(display, style: const TextStyle(color: Color(0xFF374151))),
+              const SizedBox(width: 8),
+              TextButton(
+                onPressed: () => setState(() => _showWeight = !_showWeight),
+                child: Text(_showWeight ? '非表示' : '表示'),
+              ),
+            ],
+          ),
         ],
       ),
     );
