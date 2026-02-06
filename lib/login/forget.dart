@@ -1,28 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
-import '../firebase_options.dart'; // ← Firebase設定ファイルを忘れずに！
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform, // Firebase設定
-  );
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: ForgetPage(),
-    );
-  }
-}
-
+/// パスワードリセット用メール送信画面。
 class ForgetPage extends StatefulWidget {
   const ForgetPage({super.key});
 
@@ -40,13 +19,12 @@ class _ForgetPageState extends State<ForgetPage> {
     super.dispose();
   }
 
-  /// パスワードリセットメール送信処理
   Future<void> _sendResetLink() async {
     final email = _emailController.text.trim();
 
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('メールアドレスを入力してください')),
+        const SnackBar(content: Text('メールアドレスを入力してください。')),
       );
       return;
     }
@@ -56,7 +34,25 @@ class _ForgetPageState extends State<ForgetPage> {
     });
 
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      const continueUrl = String.fromEnvironment('PASSWORD_RESET_URL');
+      if (continueUrl.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('リセットURLが未設定です。'),
+          ),
+        );
+        return;
+      }
+      final actionCodeSettings = ActionCodeSettings(
+        url: continueUrl,
+        handleCodeInApp: false,
+      );
+
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: email,
+        actionCodeSettings: actionCodeSettings,
+      );
 
       if (!mounted) return;
       showDialog(
@@ -73,13 +69,14 @@ class _ForgetPageState extends State<ForgetPage> {
         ),
       );
     } on FirebaseAuthException catch (e) {
-      String message = 'エラーが発生しました';
+      String message = 'エラーが発生しました。';
       if (e.code == 'user-not-found') {
-        message = 'このメールアドレスは登録されていません';
+        message = 'このメールアドレスは登録されていません。';
       } else if (e.code == 'invalid-email') {
-        message = 'メールアドレスの形式が正しくありません';
+        message = 'メールアドレスの形式が正しくありません。';
       }
 
+      if (!mounted) return;
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
@@ -106,7 +103,7 @@ class _ForgetPageState extends State<ForgetPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('パスワードを忘れた場合'),
+        title: const Text('パスワードを忘れた方へ'),
         centerTitle: true,
       ),
       body: Padding(
@@ -115,8 +112,8 @@ class _ForgetPageState extends State<ForgetPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              '登録したメールアドレスを入力してください。'
-              '\nパスワードリセット用のリンクを送信します。',
+              '登録したメールアドレスを入力してください。\n'
+              'パスワード再設定用のリンクを送信します。',
               style: TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 20),
@@ -133,8 +130,7 @@ class _ForgetPageState extends State<ForgetPage> {
               onPressed: _isLoading ? null : _sendResetLink,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.deepPurple,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
