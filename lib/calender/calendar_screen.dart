@@ -10,7 +10,7 @@ import '../plan_detail.dart';
 import 'workout_detail_dialog.dart';
 
 class CalendarScreen extends StatefulWidget {
-  const CalendarScreen({Key? key}) : super(key: key);
+  const CalendarScreen({super.key});
 
   @override
   CalendarScreenState createState() => CalendarScreenState();
@@ -19,6 +19,18 @@ class CalendarScreen extends StatefulWidget {
 class CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  DateTime? _pendingScrollDay;
+
+  final ScrollController _chartScrollController = ScrollController();
+
+  static const double _barWidth = 10.0;
+  static const double _groupSpace = 12.0;
+
+  @override
+  void dispose() {
+    _chartScrollController.dispose();
+    super.dispose();
+  }
 
   Stream<List<TrainingLogEntry>> _logStream(String uid) {
     return FirebaseFirestore.instance
@@ -26,13 +38,17 @@ class CalendarScreenState extends State<CalendarScreen> {
         .where('userId', isEqualTo: uid)
         .orderBy('completedAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => TrainingLogEntry.fromFirestore(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => TrainingLogEntry.fromFirestore(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   List<TrainingLogEntry> _logsForDay(
-      List<TrainingLogEntry> logs, DateTime day) {
+    List<TrainingLogEntry> logs,
+    DateTime day,
+  ) {
     return logs.where((log) => isSameDay(log.completedAt, day)).toList();
   }
 
@@ -44,13 +60,22 @@ class CalendarScreenState extends State<CalendarScreen> {
       final start = today.subtract(const Duration(days: 30));
       return List.generate(31, (i) => start.add(Duration(days: i)));
     }
-    final center = _dateOnly(selectedDay);
-    final start = center.subtract(const Duration(days: 15));
+
+    final selected = _dateOnly(selectedDay);
+    final daysDiff = today.difference(selected).inDays;
+    if (daysDiff <= 30) {
+      final start = today.subtract(const Duration(days: 30));
+      return List.generate(31, (i) => start.add(Duration(days: i)));
+    }
+
+    final start = selected.subtract(const Duration(days: 15));
     return List.generate(31, (i) => start.add(Duration(days: i)));
   }
 
-  List<Map<String, dynamic>> _chartStats(
-      List<TrainingLogEntry> logs, DateTime? selectedDay) {
+  List<_ChartStat> _chartStats(
+    List<TrainingLogEntry> logs,
+    DateTime? selectedDay,
+  ) {
     final days = _chartDays(selectedDay);
     return days.map((day) {
       final daily = _logsForDay(logs, day);
@@ -58,12 +83,42 @@ class CalendarScreenState extends State<CalendarScreen> {
           daily.fold<int>(0, (sum, log) => sum + (log.sets ?? 0));
       final totalCalories =
           daily.fold<int>(0, (sum, log) => sum + (log.calories ?? 0));
-      return {
-        'day': '${day.month}/${day.day}',
-        'sets': totalSets,
-        'calories': totalCalories,
-      };
+      return _ChartStat(
+        day: day,
+        label: '${day.month}/${day.day}',
+        sets: totalSets,
+        calories: totalCalories,
+      );
     }).toList();
+  }
+
+  int _indexForDay(List<DateTime> days, DateTime target) {
+    return days.indexWhere((day) => isSameDay(day, target));
+  }
+
+  void _scheduleChartScroll(List<DateTime> days, double viewportWidth) {
+    final target = _pendingScrollDay;
+    if (target == null) return;
+    final index = _indexForDay(days, target);
+    if (index < 0) {
+      _pendingScrollDay = null;
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_chartScrollController.hasClients) return;
+      final groupExtent = _barWidth * 2 + _groupSpace;
+      final rawOffset =
+          index * groupExtent - (viewportWidth / 2 - groupExtent / 2);
+      final maxOffset = _chartScrollController.position.maxScrollExtent;
+      final clamped = rawOffset.clamp(0.0, maxOffset);
+      _chartScrollController.animateTo(
+        clamped,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+      _pendingScrollDay = null;
+    });
   }
 
   @override
@@ -73,7 +128,7 @@ class CalendarScreenState extends State<CalendarScreen> {
       return Scaffold(
         appBar: AppBar(title: const Text('カレンダー'), centerTitle: true),
         body: const Center(
-          child: Text('トレーニング履歴を表示するにはログインしてください。'),
+          child: Text('トレーニング履歴を見るにはログインしてください。'),
         ),
       );
     }
@@ -98,11 +153,14 @@ class CalendarScreenState extends State<CalendarScreen> {
           final visibleLogs =
               selectedLogs.where((log) => !log.isPlanChild).toList();
           final stats = _chartStats(logs, _selectedDay);
+          final chartDays = stats.map((e) => e.day).toList();
 
           return SingleChildScrollView(
             child: Column(
               children: [
                 const SizedBox(height: 12),
+
+                // グラフ
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: Column(
@@ -111,22 +169,25 @@ class CalendarScreenState extends State<CalendarScreen> {
                         height: 220,
                         child: LayoutBuilder(
                           builder: (context, constraints) {
-                            const barWidth = 10.0;
-                            const groupSpace = 12.0;
                             final desiredWidth =
-                                stats.length * (barWidth * 2 + groupSpace);
+                                stats.length * (_barWidth * 2 + _groupSpace);
                             final chartWidth =
                                 desiredWidth < constraints.maxWidth
                                     ? constraints.maxWidth
                                     : desiredWidth;
+                            _scheduleChartScroll(
+                              chartDays,
+                              constraints.maxWidth,
+                            );
                             return SingleChildScrollView(
+                              controller: _chartScrollController,
                               scrollDirection: Axis.horizontal,
                               child: SizedBox(
                                 width: chartWidth,
                                 child: BarChart(
                                   BarChartData(
                                     borderData: FlBorderData(show: false),
-                                    groupsSpace: groupSpace,
+                                    groupsSpace: _groupSpace,
                                     titlesData: FlTitlesData(
                                       leftTitles: const AxisTitles(
                                         sideTitles:
@@ -152,7 +213,7 @@ class CalendarScreenState extends State<CalendarScreen> {
                                               return const SizedBox();
                                             }
                                             return Text(
-                                              stats[index]['day'] as String,
+                                              stats[index].label,
                                               style:
                                                   const TextStyle(fontSize: 10),
                                             );
@@ -170,17 +231,14 @@ class CalendarScreenState extends State<CalendarScreen> {
                                         x: index,
                                         barRods: [
                                           BarChartRodData(
-                                            toY: (data['sets'] as int)
-                                                .toDouble(),
+                                            toY: data.sets.toDouble(),
                                             color: Colors.deepPurple,
-                                            width: barWidth,
+                                            width: _barWidth,
                                           ),
                                           BarChartRodData(
-                                            toY: ((data['calories'] as int) /
-                                                    10)
-                                                .toDouble(),
+                                            toY: data.calories / 10,
                                             color: Colors.orangeAccent,
-                                            width: barWidth,
+                                            width: _barWidth,
                                           ),
                                         ],
                                       );
@@ -210,7 +268,10 @@ class CalendarScreenState extends State<CalendarScreen> {
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 16),
+
+                // カレンダー
                 Card(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   elevation: 4,
@@ -226,6 +287,7 @@ class CalendarScreenState extends State<CalendarScreen> {
                       setState(() {
                         _selectedDay = selectedDay;
                         _focusedDay = focusedDay;
+                        _pendingScrollDay = selectedDay;
                       });
                     },
                     calendarStyle: const CalendarStyle(
@@ -246,7 +308,10 @@ class CalendarScreenState extends State<CalendarScreen> {
                     eventLoader: (day) => _logsForDay(logs, day),
                   ),
                 ),
+
                 const SizedBox(height: 16),
+
+                // 選択した日の運動一覧
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
@@ -255,7 +320,7 @@ class CalendarScreenState extends State<CalendarScreen> {
                       Text(
                         _selectedDay == null
                             ? '日付を選択してください'
-                            : '${_selectedDay!.month}/${_selectedDay!.day} のトレーニング履歴',
+                            : '${_selectedDay!.month}/${_selectedDay!.day} の運動一覧',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -263,52 +328,55 @@ class CalendarScreenState extends State<CalendarScreen> {
                       ),
                       const SizedBox(height: 8),
                       if (visibleLogs.isEmpty)
-                        const Text('この日に記録されたトレーニングはありません。'),
-                      ...visibleLogs.map(
-                        (log) {
-                          final isPlan = log.isPlan;
-                          final title = isPlan
-                              ? '${log.planName ?? log.exerciseName} (プラン)'
-                              : log.exerciseName;
-                          final subtitle = isPlan
-                              ? '種目数: ${log.planExercises.length} | 負荷: ${log.planIntensity ?? '-'}'
-                              : 'セット: ${log.sets ?? '-'} | 回数/秒数: ${log.repsOrSeconds ?? '-'} | 負荷: ${log.loadLevel ?? '-'} | カロリー: ${log.calories ?? '-'}kcal';
-                          return Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  ListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    title: Text(title),
-                                    subtitle: Text(subtitle, maxLines: 2),
-                                    trailing: const Icon(Icons.info_outline),
-                                    onTap: () {
-                                      if (isPlan) {
-                                        _navigateToPlanDetail(log);
-                                      } else {
-                                        showWorkoutDetailDialog(context, log);
-                                      }
-                                    },
+                        const Text('この日に運動は登録されていません。'),
+                      ...visibleLogs.map((log) {
+                        final isPlan = log.isPlan;
+                        final title = isPlan
+                            ? '${log.planName ?? log.exerciseName}（プラン）'
+                            : log.exerciseName;
+                        final subtitle = isPlan
+                            ? '種目数: ${log.planExercises.length}'
+                                ' | 負荷: ${log.planIntensity ?? '-'}'
+                                '${log.planMinutes != null ? ' | 時間: ${log.planMinutes}分' : ''}'
+                            : 'セット: ${log.sets ?? '-'}'
+                                ' | 回数/秒数: ${log.repsOrSeconds ?? '-'}'
+                                ' | 負荷: ${log.loadLevel ?? '-'}'
+                                ' | カロリー: ${log.calories ?? '-'}kcal';
+                        return Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(title),
+                                  subtitle: Text(subtitle, maxLines: 2),
+                                  trailing: const Icon(Icons.info_outline),
+                                  onTap: () {
+                                    if (isPlan) {
+                                      _navigateToPlanDetail(log);
+                                    } else {
+                                      showWorkoutDetailDialog(context, log);
+                                    }
+                                  },
+                                ),
+                                const SizedBox(height: 8),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: ElevatedButton.icon(
+                                    onPressed: () => isPlan
+                                        ? _navigateToPlanDetail(log)
+                                        : _navigateToDetail(log),
+                                    icon: const Icon(Icons.play_arrow),
+                                    label: Text(isPlan ? 'プランを見る' : 'もう一度やる'),
                                   ),
-                                  const SizedBox(height: 8),
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: ElevatedButton.icon(
-                                      onPressed: () => isPlan
-                                          ? _navigateToPlanDetail(log)
-                                          : _navigateToDetail(log),
-                                      icon: const Icon(Icons.play_arrow),
-                                      label: Text(isPlan ? 'プランを開く' : 'もう一度やる'),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        );
+                      }),
                     ],
                   ),
                 ),
@@ -340,4 +408,18 @@ class CalendarScreenState extends State<CalendarScreen> {
       ),
     );
   }
+}
+
+class _ChartStat {
+  const _ChartStat({
+    required this.day,
+    required this.label,
+    required this.sets,
+    required this.calories,
+  });
+
+  final DateTime day;
+  final String label;
+  final int sets;
+  final int calories;
 }
