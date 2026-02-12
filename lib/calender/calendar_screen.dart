@@ -8,6 +8,8 @@ import '../models/training_log_entry.dart';
 import '../fitnessDetail.dart';
 import '../plan_detail.dart';
 import 'workout_detail_dialog.dart';
+import '../share/share_button.dart';
+import '../share/share_templates.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -352,7 +354,9 @@ class CalendarScreenState extends State<CalendarScreen> {
                                   contentPadding: EdgeInsets.zero,
                                   title: Text(title),
                                   subtitle: Text(subtitle, maxLines: 2),
-                                  trailing: const Icon(Icons.info_outline),
+                                  trailing: ShareButton(
+                                    data: _shareDataForLog(log),
+                                  ),
                                   onTap: () {
                                     if (isPlan) {
                                       _navigateToPlanDetail(log);
@@ -407,6 +411,22 @@ class CalendarScreenState extends State<CalendarScreen> {
         ),
       ),
     );
+  }
+
+  ShareData _shareDataForLog(TrainingLogEntry log) {
+    if (log.isPlan) {
+      final minutes =
+          log.planMinutes != null ? '（${log.planMinutes}分）' : '';
+      final message =
+          'トレーニングプラン: ${log.planName ?? log.exerciseName}$minutes';
+      return ShareTemplates.plain(message: message);
+    }
+    final reps = log.repsOrSeconds ?? '-';
+    final sets = log.sets ?? '-';
+    final load = log.loadLevel ?? '-';
+    final message =
+        '今日のトレーニング: ${log.exerciseName}\nセット: $sets 回数/秒数: $reps 負荷: $load';
+    return ShareTemplates.plain(message: message);
   }
 }
 

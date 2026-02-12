@@ -13,6 +13,8 @@ import 'services/media_service.dart';
 import 'services/function_endpoints.dart';
 import 'services/training_log.dart';
 import 'services/training_log_firestore.dart';
+import 'share/share_button.dart';
+import 'share/share_templates.dart';
 
 /// トレーニング1種目のタイマー画面。
 class TrainingTimerPage extends StatefulWidget {
@@ -875,7 +877,43 @@ class _TrainingTimerPageState extends State<TrainingTimerPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(messages.join('\n'))),
     );
+
+    await _showShareDialog();
+    if (!mounted) return;
     Navigator.of(context).pop(true);
+  }
+
+  ShareData _buildShareData() {
+    final target = widget.item.repsOrSeconds ?? '指定なし';
+    final load = widget.item.loadLevel ?? '指定なし';
+    final message =
+        'トレーニングお疲れ様でした！\n${widget.item.name}\nセット: $totalSets 目標: $target 負荷: $load';
+    return ShareTemplates.plain(message: message);
+  }
+
+  Future<void> _showShareDialog() async {
+    return showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('トレーニングお疲れ様でした！'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('SNSで共有する'),
+              const SizedBox(height: 8),
+              ShareButton(data: _buildShareData()),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('閉じる'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // --- build --------------------------------------------------------------
