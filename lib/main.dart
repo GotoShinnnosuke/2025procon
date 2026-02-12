@@ -113,6 +113,44 @@ class _HomePageState extends State<HomePage> {
   TrainingGenerationMode _generationMode = TrainingGenerationMode.exercises;
   int _planMinutes = 10;
 
+  static const List<String> _bodyKeywords = [
+    '胸',
+    '背中',
+    '脚',
+    '足',
+    '腹',
+    '腹筋',
+    '腕',
+    '肩',
+    '尻',
+    'お尻',
+    '体幹',
+    '全身',
+    '有酸素',
+    'ストレッチ',
+  ];
+  static const List<String> _exerciseKeywords = [
+    'スクワット',
+    'ランジ',
+    'プッシュアップ',
+    '腕立て',
+    'プランク',
+    'クランチ',
+    'ヒップリフト',
+    'バックエクステンション',
+    'バーピー',
+    'マウンテンクライマー',
+    'ディップス',
+    'squat',
+    'lunge',
+    'push',
+    'plank',
+    'crunch',
+    'burpee',
+    'mountain',
+    'dip',
+  ];
+
   bool get _hasGeneratedResults => _exercises.isNotEmpty || _plans.isNotEmpty;
 
   String get _modeLabel =>
@@ -231,7 +269,27 @@ class _HomePageState extends State<HomePage> {
     final input = _searchController.text.trim();
     if (input.isEmpty) {
       setState(() {
-        _error = '条件を入力してください（目的、頻度、時間、器具など）';
+        _error = '未入力です。部位名または種目名を入力してください。';
+        _exercises = [];
+        _plans = [];
+      });
+      return;
+    }
+    final normalized = input.replaceAll(RegExp(r'\s+'), '');
+    if (normalized.length < 2) {
+      setState(() {
+        _error = '入力が短すぎます。例: 胸・背中 / スクワット・プランク';
+        _exercises = [];
+        _plans = [];
+      });
+      return;
+    }
+    final lower = normalized.toLowerCase();
+    final matchesBody = _bodyKeywords.any((k) => normalized.contains(k));
+    final matchesExercise = _exerciseKeywords.any((k) => lower.contains(k));
+    if (!matchesBody && !matchesExercise) {
+      setState(() {
+        _error = '部位名または種目名で入力してください（例: 胸・背中 / スクワット・プランク）';
         _exercises = [];
         _plans = [];
       });
