@@ -1,445 +1,409 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 
-import '../models/training_log_entry.dart';
 import '../fitnessDetail.dart';
+import '../models/training_log_entry.dart';
 import '../plan_detail.dart';
-import 'workout_detail_dialog.dart';
 import '../share/share_button.dart';
 import '../share/share_templates.dart';
+import 'workout_detail_dialog.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
 
   @override
-  CalendarScreenState createState() => CalendarScreenState();
+  State<CalendarScreen> createState() => CalendarScreenState();
 }
 
 class CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  DateTime? _pendingScrollDay;
-
-  final ScrollController _chartScrollController = ScrollController();
-
-  static const double _barWidth = 10.0;
-  static const double _groupSpace = 12.0;
 
   @override
-  void dispose() {
-    _chartScrollController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _selectedDay = _focusedDay;
   }
 
   Stream<List<TrainingLogEntry>> _logStream(String uid) {
     return FirebaseFirestore.instance
         .collection('trainingLogs')
         .where('userId', isEqualTo: uid)
-        .orderBy('completedAt', descending: true)
         .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => TrainingLogEntry.fromFirestore(doc.data(), doc.id))
-              .toList(),
-        );
+        .map((snap) {
+      final entries = snap.docs
+          .map((d) {
+            final data = d.data();
+            if (data['deleted'] == true) return null;
+            return TrainingLogEntry.fromFirestore(data, d.id);
+          })
+          .whereType<TrainingLogEntry>()
+          .toList();
+      entries.sort((a, b) => b.completedAt.compareTo(a.completedAt));
+      return entries;
+    });
   }
 
-  List<TrainingLogEntry> _logsForDay(
-    List<TrainingLogEntry> logs,
-    DateTime day,
-  ) {
+  List<TrainingLogEntry> _visibleLogs(List<TrainingLogEntry> logs) {
+    return logs.where((log) => !log.isPlanChild).toList();
+  }
+
+  List<TrainingLogEntry> _getLogsForDay(
+      List<TrainingLogEntry> logs, DateTime day) {
     return logs.where((log) => isSameDay(log.completedAt, day)).toList();
   }
 
-  DateTime _dateOnly(DateTime day) => DateTime(day.year, day.month, day.day);
-
-  List<DateTime> _chartDays(DateTime? selectedDay) {
-    final today = _dateOnly(DateTime.now());
-    if (selectedDay == null) {
-      final start = today.subtract(const Duration(days: 30));
-      return List.generate(31, (i) => start.add(Duration(days: i)));
-    }
-
-    final selected = _dateOnly(selectedDay);
-    final daysDiff = today.difference(selected).inDays;
-    if (daysDiff <= 30) {
-      final start = today.subtract(const Duration(days: 30));
-      return List.generate(31, (i) => start.add(Duration(days: i)));
-    }
-
-    final start = selected.subtract(const Duration(days: 15));
-    return List.generate(31, (i) => start.add(Duration(days: i)));
-  }
-
-  List<_ChartStat> _chartStats(
-    List<TrainingLogEntry> logs,
-    DateTime? selectedDay,
-  ) {
-    final days = _chartDays(selectedDay);
-    return days.map((day) {
-      final daily = _logsForDay(logs, day);
+  List<Map<String, dynamic>> _getWeeklyStats(
+      List<TrainingLogEntry> logs, int weekOffset) {
+    final now = DateTime.now();
+    return List.generate(7, (i) {
+      final day = DateTime(now.year, now.month, now.day)
+          .subtract(Duration(days: (weekOffset * 7) + (6 - i)));
+      final daily = _getLogsForDay(logs, day);
       final totalSets =
-          daily.fold<int>(0, (sum, log) => sum + (log.sets ?? 0));
+          daily.fold<int>(0, (sum, w) => sum + (w.sets ?? 0));
       final totalCalories =
-          daily.fold<int>(0, (sum, log) => sum + (log.calories ?? 0));
-      return _ChartStat(
-        day: day,
-        label: '${day.month}/${day.day}',
-        sets: totalSets,
-        calories: totalCalories,
+          daily.fold<int>(0, (sum, w) => sum + (w.calories ?? 0));
+      return {
+        'day': '${day.month}/${day.day}',
+        'sets': totalSets,
+        'calories': totalCalories,
+      };
+    });
+  }
+
+  ShareData _shareDataForLog(TrainingLogEntry log) {
+    final title = log.isPlan
+        ? (log.planName ?? log.exerciseName)
+        : log.exerciseName;
+    final parts = <String>[];
+    if (log.sets != null) parts.add('セット ${log.sets}');
+    if (log.repsOrSeconds != null && log.repsOrSeconds!.isNotEmpty) {
+      parts.add('回数/秒 ${log.repsOrSeconds}');
+    }
+    if (log.loadLevel != null && log.loadLevel!.isNotEmpty) {
+      parts.add('負荷 ${log.loadLevel}');
+    }
+    final detail = parts.isEmpty ? '' : ' (${parts.join(' / ')})';
+    return ShareTemplates.plain(message: '$title を完了しました$detail');
+  }
+
+  void _openLog(TrainingLogEntry log) {
+    if (log.isPlan) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PlanDetailPage(
+            plan: log.toPlan(),
+            minutes: log.planMinutes,
+          ),
+        ),
       );
-    }).toList();
-  }
-
-  int _indexForDay(List<DateTime> days, DateTime target) {
-    return days.indexWhere((day) => isSameDay(day, target));
-  }
-
-  void _scheduleChartScroll(List<DateTime> days, double viewportWidth) {
-    final target = _pendingScrollDay;
-    if (target == null) return;
-    final index = _indexForDay(days, target);
-    if (index < 0) {
-      _pendingScrollDay = null;
       return;
     }
+    showWorkoutDetailDialog(context, log);
+  }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_chartScrollController.hasClients) return;
-      final groupExtent = _barWidth * 2 + _groupSpace;
-      final rawOffset =
-          index * groupExtent - (viewportWidth / 2 - groupExtent / 2);
-      final maxOffset = _chartScrollController.position.maxScrollExtent;
-      final clamped = rawOffset.clamp(0.0, maxOffset);
-      _chartScrollController.animateTo(
-        clamped,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
+  void _runAgain(TrainingLogEntry log) {
+    if (log.isPlan) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PlanDetailPage(
+            plan: log.toPlan(),
+            minutes: log.planMinutes,
+          ),
+        ),
       );
-      _pendingScrollDay = null;
-    });
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FitnessDetailPage(
+          exercise: log.toExerciseItem(),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('カレンダー'), centerTitle: true),
-        body: const Center(
-          child: Text('トレーニング履歴を見るにはログインしてください。'),
-        ),
+        appBar: AppBar(title: const Text('トレーニング記録'), centerTitle: true),
+        body: const Center(child: Text('ログインしてください')),
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('カレンダー'), centerTitle: true),
-      body: StreamBuilder<List<TrainingLogEntry>>(
-        stream: _logStream(user.uid),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(
-              child: Text('データの取得に失敗しました: ${snapshot.error}'),
-            );
-          }
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return StreamBuilder<List<TrainingLogEntry>>(
+      stream: _logStream(uid),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Scaffold(
+            appBar:
+                AppBar(title: const Text('トレーニング記録'), centerTitle: true),
+            body: Center(child: Text('読み込みに失敗しました: ${snapshot.error}')),
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final List<TrainingLogEntry> logs =
+            _visibleLogs(snapshot.data ?? const <TrainingLogEntry>[]);
+        final List<TrainingLogEntry> selectedLogs = _selectedDay != null
+            ? _getLogsForDay(logs, _selectedDay!)
+            : <TrainingLogEntry>[];
 
-          final logs = snapshot.data!;
-          final selectedLogs =
-              _selectedDay != null ? _logsForDay(logs, _selectedDay!) : [];
-          final visibleLogs =
-              selectedLogs.where((log) => !log.isPlanChild).toList();
-          final stats = _chartStats(logs, _selectedDay);
-          final chartDays = stats.map((e) => e.day).toList();
-
-          return SingleChildScrollView(
+        return Scaffold(
+          appBar: AppBar(title: const Text('トレーニング記録'), centerTitle: true),
+          body: SingleChildScrollView(
             child: Column(
               children: [
-                const SizedBox(height: 12),
-
-                // グラフ
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        height: 220,
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final desiredWidth =
-                                stats.length * (_barWidth * 2 + _groupSpace);
-                            final chartWidth =
-                                desiredWidth < constraints.maxWidth
-                                    ? constraints.maxWidth
-                                    : desiredWidth;
-                            _scheduleChartScroll(
-                              chartDays,
-                              constraints.maxWidth,
-                            );
-                            return SingleChildScrollView(
-                              controller: _chartScrollController,
-                              scrollDirection: Axis.horizontal,
-                              child: SizedBox(
-                                width: chartWidth,
-                                child: BarChart(
-                                  BarChartData(
-                                    borderData: FlBorderData(show: false),
-                                    groupsSpace: _groupSpace,
-                                    titlesData: FlTitlesData(
-                                      leftTitles: const AxisTitles(
-                                        sideTitles:
-                                            SideTitles(showTitles: false),
-                                      ),
-                                      topTitles: const AxisTitles(
-                                        sideTitles:
-                                            SideTitles(showTitles: false),
-                                      ),
-                                      rightTitles: const AxisTitles(
-                                        sideTitles:
-                                            SideTitles(showTitles: false),
-                                      ),
-                                      bottomTitles: AxisTitles(
-                                        sideTitles: SideTitles(
-                                          showTitles: true,
-                                          reservedSize: 28,
-                                          interval: 1,
-                                          getTitlesWidget: (value, meta) {
-                                            final index = value.toInt();
-                                            if (index < 0 ||
-                                                index >= stats.length) {
-                                              return const SizedBox();
-                                            }
-                                            return Text(
-                                              stats[index].label,
-                                              style:
-                                                  const TextStyle(fontSize: 10),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    ),
-                                    gridData:
-                                        const FlGridData(show: false),
-                                    barGroups:
-                                        stats.asMap().entries.map((entry) {
-                                      final index = entry.key;
-                                      final data = entry.value;
-                                      return BarChartGroupData(
-                                        x: index,
-                                        barRods: [
-                                          BarChartRodData(
-                                            toY: data.sets.toDouble(),
-                                            color: Colors.deepPurple,
-                                            width: _barWidth,
-                                          ),
-                                          BarChartRodData(
-                                            toY: data.calories / 10,
-                                            color: Colors.orangeAccent,
-                                            width: _barWidth,
-                                          ),
-                                        ],
-                                      );
-                                    }).toList(),
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(Icons.square,
-                              color: Colors.deepPurple, size: 16),
-                          SizedBox(width: 4),
-                          Text('セット数'),
-                          SizedBox(width: 12),
-                          Icon(Icons.square,
-                              color: Colors.orangeAccent, size: 16),
-                          SizedBox(width: 4),
-                          Text('消費カロリー（kcal）'),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // カレンダー
-                Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: TableCalendar<TrainingLogEntry>(
-                    firstDay: DateTime.utc(2020, 1, 1),
-                    lastDay: DateTime.utc(2030, 12, 31),
-                    focusedDay: _focusedDay,
-                    selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                    onDaySelected: (selectedDay, focusedDay) {
-                      setState(() {
-                        _selectedDay = selectedDay;
-                        _focusedDay = focusedDay;
-                        _pendingScrollDay = selectedDay;
-                      });
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 300,
+                  child: PageView.builder(
+                    reverse: true,
+                    itemCount: 5,
+                    itemBuilder: (context, index) {
+                      final weeklyStats = _getWeeklyStats(logs, index);
+                      final title = index == 0 ? '今週' : '${index}週間前';
+                      return _buildWeeklyChartCard(weeklyStats, title);
                     },
-                    calendarStyle: const CalendarStyle(
-                      todayDecoration: BoxDecoration(
-                        color: Colors.orangeAccent,
-                        shape: BoxShape.circle,
-                      ),
-                      selectedDecoration: BoxDecoration(
-                        color: Colors.deepPurple,
-                        shape: BoxShape.circle,
-                      ),
-                      markersMaxCount: 1,
-                      markerDecoration: BoxDecoration(
-                        color: Colors.redAccent,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    eventLoader: (day) => _logsForDay(logs, day),
                   ),
                 ),
+                _buildLegend(),
+                const SizedBox(height: 20),
+                _buildCalendar(logs),
+                const SizedBox(height: 20),
+                _buildWorkoutList(selectedLogs),
+                const SizedBox(height: 30),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
-                const SizedBox(height: 16),
+  Widget _buildWeeklyChartCard(List<Map<String, dynamic>> stats, String title) {
+    final maxValue = stats.fold<double>(0, (prev, e) {
+      final sets = (e['sets'] ?? 0).toDouble();
+      final calories = ((e['calories'] ?? 0) / 10).toDouble();
+      return [prev, sets, calories].reduce((a, b) => a > b ? a : b);
+    });
+    final maxY = maxValue <= 0 ? 10.0 : maxValue + 5;
 
-                // 選択した日の運動一覧
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _selectedDay == null
-                            ? '日付を選択してください'
-                            : '${_selectedDay!.month}/${_selectedDay!.day} の運動一覧',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      if (visibleLogs.isEmpty)
-                        const Text('この日に運動は登録されていません。'),
-                      ...visibleLogs.map((log) {
-                        final isPlan = log.isPlan;
-                        final title = isPlan
-                            ? '${log.planName ?? log.exerciseName}（プラン）'
-                            : log.exerciseName;
-                        final subtitle = isPlan
-                            ? '種目数: ${log.planExercises.length}'
-                                ' | 負荷: ${log.planIntensity ?? '-'}'
-                                '${log.planMinutes != null ? ' | 時間: ${log.planMinutes}分' : ''}'
-                            : 'セット: ${log.sets ?? '-'}'
-                                ' | 回数/秒数: ${log.repsOrSeconds ?? '-'}'
-                                ' | 負荷: ${log.loadLevel ?? '-'}'
-                                ' | カロリー: ${log.calories ?? '-'}kcal';
-                        return Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: Text(title),
-                                  subtitle: Text(subtitle, maxLines: 2),
-                                  trailing: ShareButton(
-                                    data: _shareDataForLog(log),
-                                  ),
-                                  onTap: () {
-                                    if (isPlan) {
-                                      _navigateToPlanDetail(log);
-                                    } else {
-                                      showWorkoutDetailDialog(context, log);
-                                    }
-                                  },
-                                ),
-                                const SizedBox(height: 8),
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: ElevatedButton.icon(
-                                    onPressed: () => isPlan
-                                        ? _navigateToPlanDetail(log)
-                                        : _navigateToDetail(log),
-                                    icon: const Icon(Icons.play_arrow),
-                                    label: Text(isPlan ? 'プランを見る' : 'もう一度やる'),
-                                  ),
-                                ),
-                              ],
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Expanded(
+            child: BarChart(
+              BarChartData(
+                maxY: maxY,
+                alignment: BarChartAlignment.spaceAround,
+                borderData: FlBorderData(show: false),
+                gridData: const FlGridData(show: false),
+                titlesData: FlTitlesData(
+                  leftTitles:
+                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles:
+                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles:
+                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 30,
+                      getTitlesWidget: (value, meta) {
+                        final i = value.toInt();
+                        if (i < 0 || i >= stats.length) {
+                          return const SizedBox();
+                        }
+                        return SideTitleWidget(
+                          axisSide: meta.axisSide,
+                          space: 8,
+                          child: Text(
+                            stats[i]['day'],
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         );
-                      }),
-                    ],
+                      },
+                    ),
                   ),
                 ),
-              ],
+                barGroups: stats.asMap().entries.map((entry) {
+                  return BarChartGroupData(
+                    x: entry.key,
+                    barRods: [
+                      BarChartRodData(
+                        toY: (entry.value['sets'] ?? 0).toDouble(),
+                        color: const Color.fromARGB(255, 102, 198, 198),
+                        width: 18,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      BarChartRodData(
+                        toY: ((entry.value['calories'] ?? 0) / 10).toDouble(),
+                        color: const Color.fromARGB(255, 103, 218, 139),
+                        width: 18,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
             ),
-          );
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalendar(List<TrainingLogEntry> logs) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      elevation: 0,
+      color: Colors.grey[100],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: TableCalendar<TrainingLogEntry>(
+        firstDay: DateTime.now().subtract(const Duration(days: 90)),
+        lastDay: DateTime.utc(2030, 12, 31),
+        focusedDay: _focusedDay,
+        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+        onDaySelected: (selected, focused) {
+          setState(() {
+            _selectedDay = selected;
+            _focusedDay = focused;
+          });
         },
-      ),
-    );
-  }
-
-  void _navigateToDetail(TrainingLogEntry log) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FitnessDetailPage(exercise: log.toExerciseItem()),
-      ),
-    );
-  }
-
-  void _navigateToPlanDetail(TrainingLogEntry log) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PlanDetailPage(
-          plan: log.toPlan(),
-          minutes: log.planMinutes,
+        eventLoader: (day) => _getLogsForDay(logs, day),
+        calendarStyle: const CalendarStyle(
+          todayDecoration:
+              BoxDecoration(color: Colors.orangeAccent, shape: BoxShape.circle),
+          selectedDecoration:
+              BoxDecoration(color: Colors.deepPurple, shape: BoxShape.circle),
+          markerDecoration:
+              BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
+        ),
+        headerStyle: const HeaderStyle(
+          formatButtonVisible: false,
+          titleCentered: true,
         ),
       ),
     );
   }
 
-  ShareData _shareDataForLog(TrainingLogEntry log) {
-    if (log.isPlan) {
-      final minutes =
-          log.planMinutes != null ? '（${log.planMinutes}分）' : '';
-      final message =
-          'トレーニングプラン: ${log.planName ?? log.exerciseName}$minutes';
-      return ShareTemplates.plain(message: message);
-    }
-    final reps = log.repsOrSeconds ?? '-';
-    final sets = log.sets ?? '-';
-    final load = log.loadLevel ?? '-';
-    final message =
-        '今日のトレーニング: ${log.exerciseName}\nセット: $sets 回数/秒数: $reps 負荷: $load';
-    return ShareTemplates.plain(message: message);
+  Widget _buildWorkoutList(List<TrainingLogEntry> selectedLogs) {
+    final title = _selectedDay == null
+        ? '日付を選択してください'
+        : isSameDay(_selectedDay, DateTime.now())
+            ? '今日の運動'
+            : '${_selectedDay!.month}/${_selectedDay!.day} の運動';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          if (selectedLogs.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Text(
+                '運動の記録がありません',
+                style: TextStyle(color: Colors.grey),
+              ),
+            )
+          else
+            ...selectedLogs.map((log) {
+              final subtitle = log.isPlan
+                  ? 'プラン / ${log.planMinutes ?? '-'}分'
+                  : '${log.sets ?? '-'}セット / ${log.calories ?? '-'}kcal';
+              return Card(
+                elevation: 0,
+                color: Colors.grey[50],
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: Icon(
+                    log.isPlan
+                        ? Icons.calendar_view_day
+                        : Icons.fitness_center,
+                    color: Colors.deepPurpleAccent,
+                  ),
+                  title: Text(
+                    log.isPlan
+                        ? (log.planName ?? log.exerciseName)
+                        : log.exerciseName,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(subtitle),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ShareButton(data: _shareDataForLog(log)),
+                      const Icon(Icons.chevron_right),
+                    ],
+                  ),
+                  onTap: () => _openLog(log),
+                  onLongPress: () => _runAgain(log),
+                ),
+              );
+            }),
+        ],
+      ),
+    );
   }
-}
 
-class _ChartStat {
-  const _ChartStat({
-    required this.day,
-    required this.label,
-    required this.sets,
-    required this.calories,
-  });
+  Widget _buildLegend() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _dot(const Color.fromARGB(255, 102, 198, 198)),
+        const Text(' セット数', style: TextStyle(fontSize: 12)),
+        const SizedBox(width: 20),
+        _dot(const Color.fromARGB(255, 103, 218, 139)),
+        const Text(' カロリー(10kcal)', style: TextStyle(fontSize: 12)),
+      ],
+    );
+  }
 
-  final DateTime day;
-  final String label;
-  final int sets;
-  final int calories;
+  Widget _dot(Color c) => Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+      );
 }
