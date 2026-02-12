@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -57,14 +57,12 @@ class CalendarScreenState extends State<CalendarScreen> {
   }
 
   List<Map<String, dynamic>> _getWeeklyStats(
-      List<TrainingLogEntry> logs, int weekOffset) {
-    final now = DateTime.now();
+      List<TrainingLogEntry> logs, DateTime centerDay) {
+    final base = DateTime(centerDay.year, centerDay.month, centerDay.day);
     return List.generate(7, (i) {
-      final day = DateTime(now.year, now.month, now.day)
-          .subtract(Duration(days: (weekOffset * 7) + (6 - i)));
+      final day = base.add(Duration(days: i - 3));
       final daily = _getLogsForDay(logs, day);
-      final totalSets =
-          daily.fold<int>(0, (sum, w) => sum + (w.sets ?? 0));
+      final totalSets = daily.fold<int>(0, (sum, w) => sum + (w.sets ?? 0));
       final totalCalories =
           daily.fold<int>(0, (sum, w) => sum + (w.calories ?? 0));
       return {
@@ -76,19 +74,18 @@ class CalendarScreenState extends State<CalendarScreen> {
   }
 
   ShareData _shareDataForLog(TrainingLogEntry log) {
-    final title = log.isPlan
-        ? (log.planName ?? log.exerciseName)
-        : log.exerciseName;
+    final title =
+        log.isPlan ? (log.planName ?? log.exerciseName) : log.exerciseName;
     final parts = <String>[];
     if (log.sets != null) parts.add('セット ${log.sets}');
     if (log.repsOrSeconds != null && log.repsOrSeconds!.isNotEmpty) {
-      parts.add('回数/秒 ${log.repsOrSeconds}');
+      parts.add('回数/秒数 ${log.repsOrSeconds}');
     }
     if (log.loadLevel != null && log.loadLevel!.isNotEmpty) {
       parts.add('負荷 ${log.loadLevel}');
     }
     final detail = parts.isEmpty ? '' : ' (${parts.join(' / ')})';
-    return ShareTemplates.plain(message: '$title を完了しました$detail');
+    return ShareTemplates.plain(message: '$title を実施しました$detail');
   }
 
   void _openLog(TrainingLogEntry log) {
@@ -135,7 +132,7 @@ class CalendarScreenState extends State<CalendarScreen> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('トレーニング記録'), centerTitle: true),
+        appBar: AppBar(title: const Text('カレンダー'), centerTitle: true),
         body: const Center(child: Text('ログインしてください')),
       );
     }
@@ -145,9 +142,10 @@ class CalendarScreenState extends State<CalendarScreen> {
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Scaffold(
-            appBar:
-                AppBar(title: const Text('トレーニング記録'), centerTitle: true),
-            body: Center(child: Text('読み込みに失敗しました: ${snapshot.error}')),
+            appBar: AppBar(title: const Text('カレンダー'), centerTitle: true),
+            body: Center(
+              child: Text('読み込みに失敗しました: ${snapshot.error}'),
+            ),
           );
         }
         if (!snapshot.hasData) {
@@ -160,24 +158,23 @@ class CalendarScreenState extends State<CalendarScreen> {
         final List<TrainingLogEntry> selectedLogs = _selectedDay != null
             ? _getLogsForDay(logs, _selectedDay!)
             : <TrainingLogEntry>[];
+        final centerDay = _selectedDay ?? _focusedDay;
+        final startDay = DateTime(centerDay.year, centerDay.month, centerDay.day)
+            .subtract(const Duration(days: 3));
+        final endDay = startDay.add(const Duration(days: 6));
+        final rangeTitle =
+            '${startDay.month}/${startDay.day} - ${endDay.month}/${endDay.day}';
+        final weeklyStats = _getWeeklyStats(logs, centerDay);
 
         return Scaffold(
-          appBar: AppBar(title: const Text('トレーニング記録'), centerTitle: true),
+          appBar: AppBar(title: const Text('カレンダー'), centerTitle: true),
           body: SingleChildScrollView(
             child: Column(
               children: [
                 const SizedBox(height: 10),
                 SizedBox(
                   height: 300,
-                  child: PageView.builder(
-                    reverse: true,
-                    itemCount: 5,
-                    itemBuilder: (context, index) {
-                      final weeklyStats = _getWeeklyStats(logs, index);
-                      final title = index == 0 ? '今週' : '${index}週間前';
-                      return _buildWeeklyChartCard(weeklyStats, title);
-                    },
-                  ),
+                  child: _buildWeeklyChartCard(weeklyStats, rangeTitle),
                 ),
                 _buildLegend(),
                 const SizedBox(height: 20),
