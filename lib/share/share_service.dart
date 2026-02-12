@@ -1,5 +1,5 @@
 import 'package:share_plus/share_plus.dart';
-
+//変更
 class ShareService {
   static Future<void> share({
     required String text,

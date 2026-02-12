@@ -6,7 +6,7 @@ import 'share_templates.dart';
 
 class ShareButton extends StatelessWidget {
   final ShareData data;
-  final bool xDirect; // trueならX直行
+  final bool xDirect;
 
   const ShareButton({
     super.key,

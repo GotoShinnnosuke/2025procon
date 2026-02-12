@@ -29,7 +29,7 @@ class ShareTemplates {
     return ShareData(
       text: message,
       url: url,
-      hashtags: ['アプリ名'],
+      hashtags: ['ダイエット支援アプリ'],
     );
   }
 }
