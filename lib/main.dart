@@ -11,6 +11,8 @@ import 'models/training_log_entry.dart';
 import 'services/ai_service.dart';
 import 'services/favorites.dart';
 import 'services/function_endpoints.dart';
+import 'share/share_service.dart';
+import 'share/share_templates.dart';
 import 'banner/fake_ad_banner.dart';
 import 'login/account.dart';
 import 'login/mypage.dart';
@@ -215,6 +217,19 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _displayName = (name != null && name.isNotEmpty) ? name : fallback;
     });
+  }
+
+  Future<void> _shareTrainingLog(TrainingLogEntry log) async {
+    final target = log.repsOrSeconds ?? '指定なし';
+    final load = log.loadLevel ?? '指定なし';
+    final message =
+        '今日のトレーニングお疲れ様でした！\n${log.exerciseName}\nセット: ${log.sets ?? '-'} 目標: $target  負荷: $load';
+    final data = ShareTemplates.plain(message: message);
+    await ShareService.share(
+      text: data.text,
+      url: data.url,
+      hashtags: data.hashtags,
+    );
   }
 
   void _setGenerationMode(TrainingGenerationMode mode) {
@@ -698,12 +713,13 @@ class _HomePageState extends State<HomePage> {
                         title: log.exerciseName,
                         subtitle1:
                             'セット: ${log.sets ?? '-'}  回数/秒数: ${log.repsOrSeconds ?? '-'}  負荷: ${log.loadLevel ?? '-'}',
-                        subtitle2:
-                            (log.notes ?? '').isEmpty ? ' ' : (log.notes ?? ''),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
+                          subtitle2:
+                              (log.notes ?? '').isEmpty ? ' ' : (log.notes ?? ''),
+                          onShare: () => _shareTrainingLog(log),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
                               builder: (_) => FitnessDetailPage(
                                 exercise: log.toExerciseItem(),
                               ),
@@ -1234,29 +1250,49 @@ class _PlanChip extends StatelessWidget {
 }
 
 /// トレーニング種目の1行表示タイル。
-class _TrainingTile extends StatelessWidget {
-  const _TrainingTile({
-    required this.color,
-    required this.iconColor,
-    required this.icon,
-    required this.title,
-    required this.subtitle1,
-    required this.subtitle2,
-    this.onTap,
-    this.calories,
-  });
+  class _TrainingTile extends StatelessWidget {
+    const _TrainingTile({
+      required this.color,
+      required this.iconColor,
+      required this.icon,
+      required this.title,
+      required this.subtitle1,
+      required this.subtitle2,
+      this.onTap,
+      this.onShare,
+      this.calories,
+    });
 
   final Color color;
   final Color iconColor;
   final IconData icon;
   final String title;
-  final String subtitle1;
-  final String subtitle2;
-  final VoidCallback? onTap;
-  final int? calories;
+    final String subtitle1;
+    final String subtitle2;
+    final VoidCallback? onTap;
+    final VoidCallback? onShare;
+    final int? calories;
 
   @override
   Widget build(BuildContext context) {
+    final trailingWidget = onShare == null
+        ? const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF))
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: '共有',
+                onPressed: onShare,
+                icon: const Icon(Icons.share, size: 20),
+                color: const Color(0xFF6B7280),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF)),
+            ],
+          );
+
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       leading: Container(
@@ -1317,10 +1353,10 @@ class _TrainingTile extends StatelessWidget {
             ],
           ],
         ),
-      ),
-      trailing: const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF)),
-      onTap: onTap,
-    );
+        ),
+        trailing: trailingWidget,
+        onTap: onTap,
+      );
+    }
   }
-}
 

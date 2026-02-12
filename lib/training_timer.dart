@@ -13,7 +13,7 @@ import 'services/media_service.dart';
 import 'services/function_endpoints.dart';
 import 'services/training_log.dart';
 import 'services/training_log_firestore.dart';
-import 'share/share_button.dart';
+import 'share/share_service.dart';
 import 'share/share_templates.dart';
 
 /// トレーニング1種目のタイマー画面。
@@ -878,7 +878,16 @@ class _TrainingTimerPageState extends State<TrainingTimerPage> {
       SnackBar(content: Text(messages.join('\n'))),
     );
 
-    await _showShareDialog();
+    final share = await _showShareDialog();
+    if (!mounted) return;
+    if (share == true) {
+      final data = _buildShareData();
+      await ShareService.share(
+        text: data.text,
+        url: data.url,
+        hashtags: data.hashtags,
+      );
+    }
     if (!mounted) return;
     Navigator.of(context).pop(true);
   }
@@ -891,24 +900,21 @@ class _TrainingTimerPageState extends State<TrainingTimerPage> {
     return ShareTemplates.plain(message: message);
   }
 
-  Future<void> _showShareDialog() async {
-    return showDialog<void>(
+  Future<bool?> _showShareDialog() async {
+    return showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text('トレーニングお疲れ様でした！'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('SNSで共有する'),
-              const SizedBox(height: 8),
-              ShareButton(data: _buildShareData()),
-            ],
-          ),
+          content: const Text('トレーニングを共有しますか？'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('閉じる'),
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('記録して終了する'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('記録して共有する'),
             ),
           ],
         );
