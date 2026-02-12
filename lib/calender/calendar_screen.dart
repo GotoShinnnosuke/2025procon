@@ -7,7 +7,7 @@ import 'package:table_calendar/table_calendar.dart';
 import '../fitnessDetail.dart';
 import '../models/training_log_entry.dart';
 import '../plan_detail.dart';
-import '../share/share_button.dart';
+import '../share/share_service.dart';
 import '../share/share_templates.dart';
 import 'workout_detail_dialog.dart';
 
@@ -350,6 +350,7 @@ class CalendarScreenState extends State<CalendarScreen> {
             )
           else
             ...selectedLogs.map((log) {
+              final shareData = _shareDataForLog(log);
               final subtitle = log.isPlan
                   ? 'プラン / ${log.planMinutes ?? '-'}分'
                   : '${log.sets ?? '-'}セット / ${log.calories ?? '-'}kcal';
@@ -371,12 +372,28 @@ class CalendarScreenState extends State<CalendarScreen> {
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(subtitle),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ShareButton(data: _shareDataForLog(log)),
-                      const Icon(Icons.chevron_right),
-                    ],
+                  trailing: SizedBox(
+                    width: 72,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.share, size: 20),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          onPressed: () => ShareService.share(
+                            text: shareData.text,
+                            url: shareData.url,
+                            hashtags: shareData.hashtags,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.chevron_right),
+                      ],
+                    ),
                   ),
                   onTap: () => _openLog(log),
                   onLongPress: () => _runAgain(log),
