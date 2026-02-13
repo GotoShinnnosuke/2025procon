@@ -118,10 +118,15 @@ class _HomePageState extends State<HomePage> {
   static const List<String> _bodyKeywords = [
     '胸',
     '背中',
+    '上半身',
+    '下半身',
     '脚',
     '足',
+    '太もも',
     '腹',
     '腹筋',
+    'おなか',
+    'お腹',
     '腕',
     '肩',
     '尻',
@@ -304,7 +309,10 @@ class _HomePageState extends State<HomePage> {
       return;
     }
     final normalized = input.replaceAll(RegExp(r'\s+'), '');
-    if (normalized.length < 2) {
+    final lower = normalized.toLowerCase();
+    final matchesBody = _bodyKeywords.any((k) => normalized.contains(k));
+    final matchesExercise = _exerciseKeywords.any((k) => lower.contains(k));
+    if (normalized.length < 2 && !matchesBody && !matchesExercise) {
       setState(() {
         _error = '入力が短すぎます。例: 胸・背中 / スクワット・プランク';
         _exercises = [];
@@ -312,9 +320,6 @@ class _HomePageState extends State<HomePage> {
       });
       return;
     }
-    final lower = normalized.toLowerCase();
-    final matchesBody = _bodyKeywords.any((k) => normalized.contains(k));
-    final matchesExercise = _exerciseKeywords.any((k) => lower.contains(k));
     if (!matchesBody && !matchesExercise) {
       setState(() {
         _error = '部位名または種目名で入力してください（例: 胸・背中 / スクワット・プランク）';
