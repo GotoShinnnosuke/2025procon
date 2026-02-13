@@ -1,7 +1,7 @@
 import 'package:url_launcher/url_launcher.dart';
 
 class XShareService {
-  static Future<void> share({
+  static Future<bool> share({
     required String text,
     String? url,
     List<String>? hashtags,
@@ -31,8 +31,11 @@ class XShareService {
     if (await canLaunchUrl(uri)) {
       await launchUrl(
         uri,
-        mode: LaunchMode.externalApplication,
+        mode: LaunchMode.platformDefault,
+        webOnlyWindowName: '_blank',
       );
+      return true;
     }
+    return false;
   }
 }

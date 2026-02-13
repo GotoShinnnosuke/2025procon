@@ -381,11 +381,30 @@ class CalendarScreenState extends State<CalendarScreen> {
                             minWidth: 32,
                             minHeight: 32,
                           ),
-                          onPressed: () => ShareService.share(
-                            text: shareData.text,
-                            url: shareData.url,
-                            hashtags: shareData.hashtags,
-                          ),
+                          onPressed: () async {
+                            try {
+                              final shared = await ShareService.share(
+                                text: shareData.text,
+                                url: shareData.url,
+                                hashtags: shareData.hashtags,
+                              );
+                              if (!context.mounted) return;
+                              if (!shared) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      '共有機能が利用できないため、投稿文をコピーしました',
+                                    ),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('共有に失敗しました: $e')),
+                              );
+                            }
+                          },
                         ),
                         const SizedBox(width: 4),
                         const Icon(Icons.chevron_right),

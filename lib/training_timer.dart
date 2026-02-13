@@ -878,16 +878,27 @@ class _TrainingTimerPageState extends State<TrainingTimerPage> {
       SnackBar(content: Text(messages.join('\n'))),
     );
 
-    final share = await _showShareDialog();
-    if (!mounted) return;
-    if (share == true) {
+    await _showShareDialog(onShareRequested: () async {
       final data = _buildShareData();
-      await ShareService.share(
-        text: data.text,
-        url: data.url,
-        hashtags: data.hashtags,
-      );
-    }
+      try {
+        final shared = await ShareService.share(
+          text: data.text,
+          url: data.url,
+          hashtags: data.hashtags,
+        );
+        if (!mounted) return;
+        if (!shared) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('共有機能が利用できないため、投稿文をコピーしました')),
+          );
+        }
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('共有に失敗しました: $e')),
+        );
+      }
+    });
     if (!mounted) return;
     Navigator.of(context).pop(true);
   }
@@ -900,8 +911,10 @@ class _TrainingTimerPageState extends State<TrainingTimerPage> {
     return ShareTemplates.plain(message: message);
   }
 
-  Future<bool?> _showShareDialog() async {
-    return showDialog<bool>(
+  Future<void> _showShareDialog({
+    required Future<void> Function() onShareRequested,
+  }) async {
+    await showDialog<void>(
       context: context,
       builder: (context) {
         return AlertDialog(
@@ -909,11 +922,15 @@ class _TrainingTimerPageState extends State<TrainingTimerPage> {
           content: const Text('トレーニングを共有しますか？'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
+              onPressed: () => Navigator.of(context).pop(),
               child: const Text('記録して終了する'),
             ),
             FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
+              onPressed: () async {
+                await onShareRequested();
+                if (!context.mounted) return;
+                Navigator.of(context).pop();
+              },
               child: const Text('記録して共有する'),
             ),
           ],

@@ -225,11 +225,24 @@ class _HomePageState extends State<HomePage> {
     final message =
         '今日のトレーニングお疲れ様でした！\n${log.exerciseName}\nセット: ${log.sets ?? '-'} 目標: $target  負荷: $load';
     final data = ShareTemplates.plain(message: message);
-    await ShareService.share(
-      text: data.text,
-      url: data.url,
-      hashtags: data.hashtags,
-    );
+    try {
+      final shared = await ShareService.share(
+        text: data.text,
+        url: data.url,
+        hashtags: data.hashtags,
+      );
+      if (!mounted) return;
+      if (!shared) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('共有機能が利用できないため、投稿文をコピーしました')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('共有に失敗しました: $e')),
+      );
+    }
   }
 
   void _setGenerationMode(TrainingGenerationMode mode) {
