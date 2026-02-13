@@ -30,6 +30,9 @@ class ShareService {
     List<String>? hashtags,
   }) async {
     final message = compose(text: text, url: url, hashtags: hashtags);
+    if (kIsWeb && await _openXIntent(message)) {
+      return true;
+    }
 
     try {
       await Share.share(message);
@@ -38,23 +41,32 @@ class ShareService {
       debugPrint('ShareService.share share_plus failed: $e');
     }
 
-    final intent = Uri.parse(
-      'https://twitter.com/intent/tweet?text=${Uri.encodeComponent(message)}',
-    );
-    try {
-      if (await canLaunchUrl(intent)) {
-        await launchUrl(
-          intent,
-          mode: LaunchMode.platformDefault,
-          webOnlyWindowName: '_blank',
-        );
-        return true;
-      }
-    } catch (e) {
-      debugPrint('ShareService.share URL fallback failed: $e');
+    if (await _openXIntent(message)) {
+      return true;
     }
 
     await Clipboard.setData(ClipboardData(text: message));
+    return false;
+  }
+
+  static Future<bool> _openXIntent(String message) async {
+    final encoded = Uri.encodeComponent(message);
+    final uris = [
+      Uri.parse('https://x.com/intent/post?text=$encoded'),
+      Uri.parse('https://twitter.com/intent/tweet?text=$encoded'),
+    ];
+    for (final uri in uris) {
+      try {
+        final launched = await launchUrl(
+          uri,
+          mode: LaunchMode.platformDefault,
+          webOnlyWindowName: '_blank',
+        );
+        if (launched) return true;
+      } catch (e) {
+        debugPrint('ShareService.share X intent failed ($uri): $e');
+      }
+    }
     return false;
   }
 }

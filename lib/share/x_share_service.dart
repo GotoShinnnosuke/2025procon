@@ -23,18 +23,22 @@ class XShareService {
     }
 
     final encoded = Uri.encodeComponent(buffer.toString());
+    final uris = [
+      Uri.parse('https://x.com/intent/post?text=$encoded'),
+      Uri.parse('https://twitter.com/intent/tweet?text=$encoded'),
+    ];
 
-    final intentUrl = 'https://twitter.com/intent/tweet?text=$encoded';
-
-    final uri = Uri.parse(intentUrl);
-
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(
-        uri,
-        mode: LaunchMode.platformDefault,
-        webOnlyWindowName: '_blank',
-      );
-      return true;
+    for (final uri in uris) {
+      try {
+        final launched = await launchUrl(
+          uri,
+          mode: LaunchMode.platformDefault,
+          webOnlyWindowName: '_blank',
+        );
+        if (launched) return true;
+      } catch (_) {
+        // 次の候補URLを試す
+      }
     }
     return false;
   }
