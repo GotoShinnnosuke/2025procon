@@ -30,12 +30,18 @@ class XShareService {
 
     for (final uri in uris) {
       try {
-        final launched = await launchUrl(
+        final launchedBlank = await launchUrl(
           uri,
           mode: LaunchMode.platformDefault,
           webOnlyWindowName: '_blank',
         );
-        if (launched) return true;
+        if (launchedBlank) return true;
+        final launchedSelf = await launchUrl(
+          uri,
+          mode: LaunchMode.platformDefault,
+          webOnlyWindowName: '_self',
+        );
+        if (launchedSelf) return true;
       } catch (_) {
         // 次の候補URLを試す
       }
